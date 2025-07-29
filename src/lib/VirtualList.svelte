@@ -54,8 +54,8 @@
 
 	/** @type {Record<number, string>} */
 	let styleCache = $state({});
-	let wrapperStyle = $state.raw('');
-	let innerStyle = $state.raw('');
+	let wrapperStyle = $state('');
+	let innerStyle = $state('');
 
 	let wrapperHeight = $state(400);
 	let wrapperWidth = $state(400);
