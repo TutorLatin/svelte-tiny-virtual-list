@@ -1,5 +1,5 @@
 <p align="center"><img src="./static/logo.svg" alt="Logo" width="225"></p>
-<h2 align="center">svelte-tiny-virtual-list</h2>
+<h2 align="center">@tutorlatin/svelte-tiny-virtual-list</h2>
 <p align="center">A tiny but mighty list virtualization library, with zero dependencies &#128170;</p>
 <p align="center">
   <a href="https://www.npmjs.com/package/@tutorlatin/svelte-tiny-virtual-list"><img src="https://img.shields.io/npm/v/@tutorlatin/svelte-tiny-virtual-list?style=for-the-badge" alt="NPM VERSION"></a>
@@ -36,26 +36,26 @@ This is a maintained fork of [svelte-tiny-virtual-list](https://github.com/jonas
 With [npm](https://www.npmjs.com/):
 
 ```shell
-$ npm install svelte-tiny-virtual-list
+$ npm install @tutorlatin/svelte-tiny-virtual-list
 ```
 
 With [yarn](https://yarnpkg.com/):
 
 ```shell
-$ yarn add svelte-tiny-virtual-list
+$ yarn add @tutorlatin/svelte-tiny-virtual-list
 ```
 
 With [pnpm](https://pnpm.io/):
 
 ```shell
-$ pnpm install svelte-tiny-virtual-list
+$ pnpm install @tutorlatin/svelte-tiny-virtual-list
 ```
 
 ## Usage
 
 ```svelte
 <script>
-	import VirtualList from 'svelte-tiny-virtual-list';
+	import VirtualList from '@tutorlatin/svelte-tiny-virtual-list';
 
 	const data = ['A', 'B', 'C', 'D', 'E', 'F' /* ... */];
 </script>
@@ -73,7 +73,7 @@ Also works pretty well with [`svelte-infinite-loading`](https://github.com/jonas
 
 ```svelte
 <script>
-	import VirtualList from 'svelte-tiny-virtual-list';
+	import VirtualList from '@tutorlatin/svelte-tiny-virtual-list';
 	import InfiniteLoading from 'svelte-infinite-loading';
 
 	let data = $state(['A', 'B', 'C', 'D', 'E', 'F' /* ... */]);
@@ -149,7 +149,7 @@ However, if you're passing a function to `itemSize`, that type of comparison is 
 ```svelte
 <script>
 	import { onMount } from 'svelte';
-	import VirtualList from 'svelte-tiny-virtual-list';
+	import VirtualList from '@tutorlatin/svelte-tiny-virtual-list';
 
 	const data = ['A', 'B', 'C', 'D', 'E', 'F' /* ... */];
 
@@ -183,7 +183,7 @@ You can style the elements of the virtual list like this:
 
 ```svelte
 <script>
-	import VirtualList from 'svelte-tiny-virtual-list';
+	import VirtualList from '@tutorlatin/svelte-tiny-virtual-list';
 
 	const data = ['A', 'B', 'C', 'D', 'E', 'F' /* ... */];
 </script>

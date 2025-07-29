@@ -16,7 +16,7 @@
 </script>
 
 <svelte:head>
-	<title>svelte-tiny-virtual-list</title>
+	<title>@tutorlatin/svelte-tiny-virtual-list</title>
 </svelte:head>
 
 <div id="readme" class="docs-page markdown-body">
