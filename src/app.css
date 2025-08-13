@@ -1,4 +1,4 @@
-@import 'beercss/dist/cdn/beer.css';
+@import './vendor/beer.css';
 
 body {
 	--primary: #b42900 !important;
