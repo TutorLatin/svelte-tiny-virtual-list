@@ -12,6 +12,7 @@
 			newRowHeights.push(Math.random() * (155 - 50) + 50);
 		}
 
+		// Replace the array reference to trigger updates
 		rowHeights = newRowHeights;
 	}
 </script>
