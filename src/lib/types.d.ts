@@ -28,7 +28,7 @@ export type VirtualListProps = (
 			 * Height of the list view box.
 			 * This property will determine the number of rendered items.
 			 */
-			height: number;
+			height?: number | string;
 	  }
 	| {
 			/**
@@ -40,7 +40,7 @@ export type VirtualListProps = (
 			 * Width of the list view box.
 			 * This property will determine the number of rendered items.
 			 */
-			width: number;
+			width?: number | string;
 
 			/**
 			 * Height of the list view box.

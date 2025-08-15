@@ -4,7 +4,7 @@
 	let virtualList = $state.raw();
 	let rowHeights = $state.raw([]);
 
-	let scrollToIndex = $state();
+	let scrollToIndex = $state(-1);
 	/** @type {'start' | 'center' | 'end' | 'auto'} */
 	let scrollToAlignment = $state('start');
 	/** @type {'auto' | 'smooth' | 'instant'} */
@@ -15,7 +15,9 @@
 	function randomize() {
 		const newRowHeights = [];
 
-		for (let i = 0; i < NUM_ROWS; i++) newRowHeights.push(Math.random() * (155 - 50) + 50);
+		for (let i = 0; i < NUM_ROWS; i++) {
+			newRowHeights.push(Math.random() * (155 - 50) + 50);
+		}
 
 		rowHeights = newRowHeights;
 	}
@@ -59,8 +61,6 @@
 	<article>
 		<VirtualList
 			bind:this={virtualList}
-			height={500}
-			width="auto"
 			itemCount={10000}
 			itemSize={(index) => rowHeights[index]}
 			{scrollToIndex}
@@ -77,3 +77,9 @@
 
 	<!-- TODO: Show example code -->
 </div>
+
+<style>
+	article {
+		height: 500px;
+	}
+</style>

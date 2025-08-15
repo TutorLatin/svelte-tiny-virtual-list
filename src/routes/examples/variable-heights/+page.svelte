@@ -30,7 +30,7 @@
 	</button>
 
 	<article>
-		<VirtualList height={500} width="auto" itemCount={10000} itemSize={rowHeights}>
+		<VirtualList itemCount={10000} itemSize={rowHeights}>
 			{#snippet item({ style, index })}
 				<div {style} class="virtual-list-row">
 					Item #{index}
@@ -41,3 +41,9 @@
 
 	<!-- TODO: Show example code -->
 </div>
+
+<style>
+	article {
+		height: 500px;
+	}
+</style>

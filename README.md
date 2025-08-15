@@ -60,7 +60,7 @@ $ pnpm install @tutorlatin/svelte-tiny-virtual-list
 	const data = ['A', 'B', 'C', 'D', 'E', 'F' /* ... */];
 </script>
 
-<VirtualList width="100%" height={600} itemCount={data.length} itemSize={50}>
+<VirtualList height={600} itemCount={data.length} itemSize={50}>
 	{#snippet item({ style, index })}
 		<div {style}>
 			Letter: {data[index]}, Row: #{index}
@@ -92,7 +92,7 @@ Also works pretty well with [`svelte-infinite-loading`](https://github.com/jonas
 	}
 </script>
 
-<VirtualList width="100%" height={600} itemCount={data.length} itemSize={50}>
+<VirtualList height={600} itemCount={data.length} itemSize={50}>
 	{#snippet item({ style, index })}
 		<div {style}>
 			Letter: {data[index]}, Row: #{index}
@@ -112,10 +112,10 @@ Also works pretty well with [`svelte-infinite-loading`](https://github.com/jonas
 <!-- prettier-ignore -->
 | Property          | Type                                               | Default              | Description                                                                                                                                                                                                                     |
 | ----------------- | -------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| width             | `number \| string`                                 | REQUIRED or `'100%'` | Width of the list view box. When `scrollDirection` is `'horizontal'`, this property is required to be a `number` and determines the number of rendered items.                                                                   |
-| height            | `number \| string`                                 | REQUIRED or `'100%'` | Height of the list view box. When `scrollDirection` is `'vertical'`, this property is required to be a `number` and determines the number of rendered items.                                                                    |
 | itemCount         | `number`                                           | REQUIRED             | The number of items you want to render.                                                                                                                                                                                         |
 | itemSize          | `number \| number[] \| (index: number) => number`  | REQUIRED             | Either a fixed height/width (depending on the `scrollDirection`), an array containing the heights of all the items in your list (**⚠ if passing an array, do not mutate in place: replace the array reference to trigger updates**), or a function that returns the height of an item given its index: `(index: number) => number`. |
+| width             | `number \| string`                                 | `'100%'` | Width of the list view box. When `scrollDirection` is `'horizontal'`, this property determines the number of rendered items.                                                                   |
+| height            | `number \| string`                                 | `'100%'` | Height of the list view box. When `scrollDirection` is `'vertical'`, this property determines the number of rendered items.                                                                    |
 | scrollDirection   | `'vertical' \| 'horizontal'`                       | `'vertical'`         | Whether the list should scroll vertically or horizontally.                                                                                                                                                                      |
 | scrollOffset      | `number`                                           | `0`                  | Used to control the scroll offset, but also useful for setting an initial scroll offset.                                                                                                                                        |
 | scrollToIndex     | `number`                                           | `-1`                 | Item index to scroll to (by forcefully scrolling if necessary).                                                                                                                                                                 |
@@ -139,10 +139,8 @@ Also works pretty well with [`svelte-infinite-loading`](https://github.com/jonas
 
 ### Methods
 
-- `recomputeSizes(startIndex: number)` - This method force recomputes the item sizes after the specified index (these are normally cached).
-
 `VirtualList` has no way of knowing when its underlying data has changed, since it only receives a itemSize property. If the itemSize is a `number`, this isn't an issue, as it can compare before and after values and automatically call `recomputeSizes` internally.
-However, if you're passing a function to `itemSize`, that type of comparison is error prone. In that event, you'll need to call `recomputeSizes` manually to inform the `VirtualList` that the size of its items has changed.
+However, if you're passing a function to `itemSize`, that type of comparison is error prone. In that event, it can be useful to dismount and remount the VirtualList (e.g. by using a key block).
 
 #### Use the methods like this:
 
@@ -162,13 +160,7 @@ However, if you're passing a function to `itemSize`, that type of comparison is 
 
 <button onclick={handleClick}>Recompute Sizes</button>
 
-<VirtualList
-	bind:this={virtualList}
-	width="100%"
-	height={600}
-	itemCount={data.length}
-	itemSize={50}
->
+<VirtualList bind:this={virtualList} height={600} itemCount={data.length} itemSize={50}>
 	{#snippet item({ style, index })}
 		<div {style}>
 			Letter: {data[index]}, Row: #{index}
@@ -189,7 +181,7 @@ You can style the elements of the virtual list like this:
 </script>
 
 <div class="list">
-	<VirtualList width="100%" height={600} itemCount={data.length} itemSize={50}>
+	<VirtualList height={600} itemCount={data.length} itemSize={50}>
 		{#snippet item({ style, index })}
 			<div {style}>
 				Letter: {data[index]}, Row: #{index}
@@ -199,14 +191,10 @@ You can style the elements of the virtual list like this:
 </div>
 
 <style>
-	.list :global(.virtual-list-wrapper) {
-		background-color: #0f0;
-		/* ... */
-	}
-
-	.list :global(.virtual-list-inner) {
-		background-color: #f00;
-		/* ... */
+	.list {
+		--virtual-list-wrapper-bg: yellow;
+		--virtual-list-inner-bg: lime;
+		--virtual-list-sticky-bg: red;
 	}
 </style>
 ```
