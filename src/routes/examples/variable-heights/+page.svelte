@@ -1,7 +1,7 @@
 <script>
 	import VirtualList from '$lib/VirtualList.svelte';
 
-	let rowHeights = $state([]);
+	let rowHeights = $state.raw([]);
 
 	randomize();
 

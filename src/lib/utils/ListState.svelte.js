@@ -1,47 +1,33 @@
 import { SCROLL_CHANGE_REASON } from '$lib/constants.js';
 
-// TODO: Refactor further
 export class ListState {
 	offset = $state(0);
 	scrollChangeReason = $state(SCROLL_CHANGE_REASON.REQUESTED);
+	width = $state(400);
+	height = $state(400);
 
-	previousState = $state.raw({
-		offset: 0,
-		scrollChangeReason: SCROLL_CHANGE_REASON.REQUESTED
-	});
-
-	get doRefresh() {
-		return (
-			this.offset !== this.previousState.offset ||
-			this.scrollChangeReason !== this.previousState.scrollChangeReason
-		);
+	constructor(offset = 0, width = 400, height = 400) {
+		this.setScrollOffset(offset);
+		this.setDims(width, height);
 	}
 
-	get doScrollToOffset() {
-		return (
-			this.offset !== this.previousState.offset &&
-			this.scrollChangeReason === SCROLL_CHANGE_REASON.REQUESTED
-		);
+	setScrollOffset(offset = this.offset, scrollChangeReason = this.scrollChangeReason) {
+		if (Number.isFinite(offset) && offset !== this.offset) {
+			this.offset = offset;
+		}
+
+		// Trusted (internal)
+		if (scrollChangeReason !== this.scrollChangeReason) {
+			this.scrollChangeReason = scrollChangeReason;
+		}
 	}
 
-	constructor(offset = 0) {
-		this.offset = offset;
-	}
-
-	listen(offset, scrollChangeReason) {
-		if (typeof offset === 'number') this.offset = offset;
-
-		if (typeof scrollChangeReason === 'number') this.scrollChangeReason = scrollChangeReason;
-	}
-
-	update() {
-		this.#updateRenderedStateSnapshot();
-	}
-
-	#updateRenderedStateSnapshot() {
-		this.previousState = {
-			offset: $state.snapshot(this.offset),
-			scrollChangeReason: $state.snapshot(this.scrollChangeReason)
-		};
+	setDims(width = this.width, height = this.height) {
+		if (Number.isFinite(width) && width !== this.width) {
+			this.width = width;
+		}
+		if (Number.isFinite(height) && height !== this.height) {
+			this.height = height;
+		}
 	}
 }
