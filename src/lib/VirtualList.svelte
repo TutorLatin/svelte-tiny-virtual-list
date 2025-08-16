@@ -392,7 +392,6 @@
 		overflow: auto;
 		will-change: transform;
 		-webkit-overflow-scrolling: touch;
-		background: var(--virtual-list-sticky-bg, transparent);
 		contain: layout paint;
 	}
 
@@ -400,7 +399,6 @@
 		position: relative;
 		display: flex;
 		width: 100%;
-		background: var(--virtual-list-sticky-bg, transparent);
 		contain: layout paint;
 	}
 </style>

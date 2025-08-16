@@ -137,38 +137,6 @@ Also works pretty well with [`svelte-infinite-loading`](https://github.com/jonas
 - `header` - Snippet for the elements that should appear at the top of the list
 - `footer` - Snippet for the elements that should appear at the bottom of the list (e.g. `InfiniteLoading` component from `svelte-infinite-loading`)
 
-### Methods
-
-`VirtualList` has no way of knowing when its underlying data has changed, since it only receives a itemSize property. If the itemSize is a `number`, this isn't an issue, as it can compare before and after values and automatically call `recomputeSizes` internally.
-However, if you're passing a function to `itemSize`, that type of comparison is error prone. In that event, it can be useful to dismount and remount the VirtualList (e.g. by using a key block).
-
-#### Use the methods like this:
-
-```svelte
-<script>
-	import { onMount } from 'svelte';
-	import VirtualList from '@tutorlatin/svelte-tiny-virtual-list';
-
-	const data = ['A', 'B', 'C', 'D', 'E', 'F' /* ... */];
-
-	let virtualList;
-
-	function handleClick() {
-		virtualList.recomputeSizes(0);
-	}
-</script>
-
-<button onclick={handleClick}>Recompute Sizes</button>
-
-<VirtualList bind:this={virtualList} height={600} itemCount={data.length} itemSize={50}>
-	{#snippet item({ style, index })}
-		<div {style}>
-			Letter: {data[index]}, Row: #{index}
-		</div>
-	{/snippet}
-</VirtualList>
-```
-
 ### Styling
 
 You can style the elements of the virtual list like this:
@@ -191,9 +159,17 @@ You can style the elements of the virtual list like this:
 </div>
 
 <style>
+	.list :global(.virtual-list-wrapper) {
+		background-color: yellow;
+		/* ... */
+	}
+
+	.list :global(.virtual-list-inner) {
+		background-color: red;
+		/* ... */
+	}
+
 	.list {
-		--virtual-list-wrapper-bg: yellow;
-		--virtual-list-inner-bg: lime;
 		--virtual-list-sticky-bg: red;
 	}
 </style>
