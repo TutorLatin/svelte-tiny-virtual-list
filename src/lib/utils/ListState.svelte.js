@@ -1,47 +1,56 @@
-import { SCROLL_CHANGE_REASON } from '$lib/constants.js';
+import { DEFAULTS, SCROLL_CHANGE_REASON } from '$lib/constants.js';
 
-// TODO: Refactor further
+/** @typedef {typeof SCROLL_CHANGE_REASON[keyof typeof SCROLL_CHANGE_REASON]} ScrollChangeReason */
+
 export class ListState {
-	offset = $state(0);
+	/** @type {number} */
+	offset = $state(DEFAULTS.scrollOffset);
+	/** @type {ScrollChangeReason} */
 	scrollChangeReason = $state(SCROLL_CHANGE_REASON.REQUESTED);
+	/** @type {number} */
+	width = $state(DEFAULTS.width.internal);
+	/** @type {number} */
+	height = $state(DEFAULTS.height.internal);
 
-	previousState = $state.raw({
-		offset: 0,
-		scrollChangeReason: SCROLL_CHANGE_REASON.REQUESTED
-	});
-
-	get doRefresh() {
-		return (
-			this.offset !== this.previousState.offset ||
-			this.scrollChangeReason !== this.previousState.scrollChangeReason
-		);
+	/**
+	 * @param {number} [offset=DEFAULTS.scrollOffset]
+	 * @param {number} [width=DEFAULTS.width.internal]
+	 * @param {number} [height=DEFAULTS.height.internal]
+	 */
+	constructor(
+		offset = DEFAULTS.scrollOffset,
+		width = DEFAULTS.width.internal,
+		height = DEFAULTS.height.internal
+	) {
+		this.setScrollOffset(offset);
+		this.setDims(width, height);
 	}
 
-	get doScrollToOffset() {
-		return (
-			this.offset !== this.previousState.offset &&
-			this.scrollChangeReason === SCROLL_CHANGE_REASON.REQUESTED
-		);
+	/**
+	 * @param {number} [offset=this.offset]
+	 * @param {ScrollChangeReason} [scrollChangeReason=this.scrollChangeReason]
+	 */
+	setScrollOffset(offset = this.offset, scrollChangeReason = this.scrollChangeReason) {
+		if (Number.isFinite(offset) && offset !== this.offset) {
+			this.offset = offset;
+		}
+
+		// Trusted (internal)
+		if (scrollChangeReason !== this.scrollChangeReason) {
+			this.scrollChangeReason = scrollChangeReason;
+		}
 	}
 
-	constructor(offset = 0) {
-		this.offset = offset;
-	}
-
-	listen(offset, scrollChangeReason) {
-		if (typeof offset === 'number') this.offset = offset;
-
-		if (typeof scrollChangeReason === 'number') this.scrollChangeReason = scrollChangeReason;
-	}
-
-	update() {
-		this.#updateRenderedStateSnapshot();
-	}
-
-	#updateRenderedStateSnapshot() {
-		this.previousState = {
-			offset: $state.snapshot(this.offset),
-			scrollChangeReason: $state.snapshot(this.scrollChangeReason)
-		};
+	/**
+	 * @param {number} [width=this.width]
+	 * @param {number} [height=this.height]
+	 */
+	setDims(width = this.width, height = this.height) {
+		if (Number.isFinite(width) && width !== this.width) {
+			this.width = width;
+		}
+		if (Number.isFinite(height) && height !== this.height) {
+			this.height = height;
+		}
 	}
 }

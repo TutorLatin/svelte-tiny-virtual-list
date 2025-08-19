@@ -28,7 +28,7 @@ export type VirtualListProps = (
 			 * Height of the list view box.
 			 * This property will determine the number of rendered items.
 			 */
-			height: number;
+			height?: number | string;
 	  }
 	| {
 			/**
@@ -40,7 +40,7 @@ export type VirtualListProps = (
 			 * Width of the list view box.
 			 * This property will determine the number of rendered items.
 			 */
-			width: number;
+			width?: number | string;
 
 			/**
 			 * Height of the list view box.
@@ -58,6 +58,9 @@ export type VirtualListProps = (
 	 * Either a fixed height/width (depending on the `scrollDirection`),
 	 * an array containing the heights of all the items in your list,
 	 * or a function that returns the height of an item given its index: `(index: number) => number`.
+	 *
+	 * ⚠ If this is an array, do **not** mutate it in place (`sizes[i] = value`);
+	 * you must replace the array reference for the change to be detected.
 	 */
 	itemSize: ItemSize;
 

@@ -3,8 +3,6 @@
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 
-	if (browser) import('beercss/dist/cdn/beer');
-
 	let { children } = $props();
 
 	let darkMode = $state(true);

@@ -1,10 +1,10 @@
 <p align="center"><img src="./static/logo.svg" alt="Logo" width="225"></p>
-<h2 align="center">svelte-tiny-virtual-list</h2>
+<h2 align="center">@tutorlatin/svelte-tiny-virtual-list</h2>
 <p align="center">A tiny but mighty list virtualization library, with zero dependencies &#128170;</p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/svelte-tiny-virtual-list"><img src="https://img.shields.io/npm/v/svelte-tiny-virtual-list?style=for-the-badge" alt="NPM VERSION"></a>
-  <a href="https://www.npmjs.com/package/svelte-tiny-virtual-list"><img src="https://img.shields.io/npm/dt/svelte-tiny-virtual-list?style=for-the-badge" alt="NPM DOWNLOADS"></a>
-  <a href="https://www.npmjs.com/package/svelte-tiny-virtual-list"><img src="https://img.shields.io/librariesio/release/npm/svelte-tiny-virtual-list?style=for-the-badge" alt="DEPENDENCIES"></a>
+  <a href="https://www.npmjs.com/package/@tutorlatin/svelte-tiny-virtual-list"><img src="https://img.shields.io/npm/v/@tutorlatin/svelte-tiny-virtual-list?style=for-the-badge" alt="NPM VERSION"></a>
+  <a href="https://www.npmjs.com/package/@tutorlatin/svelte-tiny-virtual-list"><img src="https://img.shields.io/npm/dt/@tutorlatin/svelte-tiny-virtual-list?style=for-the-badge" alt="NPM DOWNLOADS"></a>
+  <a href="https://www.npmjs.com/package/@tutorlatin/svelte-tiny-virtual-list"><img src="https://img.shields.io/librariesio/release/npm/@tutorlatin/svelte-tiny-virtual-list?style=for-the-badge" alt="DEPENDENCIES"></a>
 </p>
 <p align="center">
   <a href="#about">About</a> •
@@ -20,6 +20,8 @@
 Instead of rendering all your data in a huge list, the virtual list component just renders the items that are visible, keeping your page nice and light.  
 This is heavily inspired by [react-tiny-virtual-list](https://github.com/clauderic/react-tiny-virtual-list) and uses most of its code and functionality!
 
+This is a maintained fork of [svelte-tiny-virtual-list](https://github.com/jonasgeiler/svelte-tiny-virtual-list).
+
 ### Features
 
 - **Tiny & dependency free** – Only ~5kb gzipped
@@ -34,31 +36,31 @@ This is heavily inspired by [react-tiny-virtual-list](https://github.com/clauder
 With [npm](https://www.npmjs.com/):
 
 ```shell
-$ npm install svelte-tiny-virtual-list
+$ npm install @tutorlatin/svelte-tiny-virtual-list
 ```
 
 With [yarn](https://yarnpkg.com/):
 
 ```shell
-$ yarn add svelte-tiny-virtual-list
+$ yarn add @tutorlatin/svelte-tiny-virtual-list
 ```
 
 With [pnpm](https://pnpm.io/):
 
 ```shell
-$ pnpm install svelte-tiny-virtual-list
+$ pnpm install @tutorlatin/svelte-tiny-virtual-list
 ```
 
 ## Usage
 
 ```svelte
 <script>
-	import VirtualList from 'svelte-tiny-virtual-list';
+	import VirtualList from '@tutorlatin/svelte-tiny-virtual-list';
 
 	const data = ['A', 'B', 'C', 'D', 'E', 'F' /* ... */];
 </script>
 
-<VirtualList width="100%" height={600} itemCount={data.length} itemSize={50}>
+<VirtualList height={600} itemCount={data.length} itemSize={50}>
 	{#snippet item({ style, index })}
 		<div {style}>
 			Letter: {data[index]}, Row: #{index}
@@ -71,7 +73,7 @@ Also works pretty well with [`svelte-infinite-loading`](https://github.com/jonas
 
 ```svelte
 <script>
-	import VirtualList from 'svelte-tiny-virtual-list';
+	import VirtualList from '@tutorlatin/svelte-tiny-virtual-list';
 	import InfiniteLoading from 'svelte-infinite-loading';
 
 	let data = $state(['A', 'B', 'C', 'D', 'E', 'F' /* ... */]);
@@ -90,7 +92,7 @@ Also works pretty well with [`svelte-infinite-loading`](https://github.com/jonas
 	}
 </script>
 
-<VirtualList width="100%" height={600} itemCount={data.length} itemSize={50}>
+<VirtualList height={600} itemCount={data.length} itemSize={50}>
 	{#snippet item({ style, index })}
 		<div {style}>
 			Letter: {data[index]}, Row: #{index}
@@ -110,10 +112,10 @@ Also works pretty well with [`svelte-infinite-loading`](https://github.com/jonas
 <!-- prettier-ignore -->
 | Property          | Type                                               | Default              | Description                                                                                                                                                                                                                     |
 | ----------------- | -------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| width             | `number \| string`                                 | REQUIRED or `'100%'` | Width of the list view box. When `scrollDirection` is `'horizontal'`, this property is required to be a `number` and determines the number of rendered items.                                                                   |
-| height            | `number \| string`                                 | REQUIRED or `'100%'` | Height of the list view box. When `scrollDirection` is `'vertical'`, this property is required to be a `number` and determines the number of rendered items.                                                                    |
 | itemCount         | `number`                                           | REQUIRED             | The number of items you want to render.                                                                                                                                                                                         |
-| itemSize          | `number \| number[] \| (index: number) => number`  | REQUIRED             | Either a fixed height/width (depending on the `scrollDirection`), an array containing the heights of all the items in your list, or a function that returns the height of an item given its index: `(index: number) => number`. |
+| itemSize          | `number \| number[] \| (index: number) => number`  | REQUIRED             | Either a fixed height/width (depending on the `scrollDirection`), an array containing the heights of all the items in your list (**⚠ if passing an array, do not mutate in place: replace the array reference to trigger updates**), or a function that returns the height of an item given its index: `(index: number) => number`. |
+| width             | `number \| string`                                 | `'100%'` | Width of the list view box. When `scrollDirection` is `'horizontal'`, this property determines the number of rendered items.                                                                   |
+| height            | `number \| string`                                 | `'100%'` | Height of the list view box. When `scrollDirection` is `'vertical'`, this property determines the number of rendered items.                                                                    |
 | scrollDirection   | `'vertical' \| 'horizontal'`                       | `'vertical'`         | Whether the list should scroll vertically or horizontally.                                                                                                                                                                      |
 | scrollOffset      | `number`                                           | `0`                  | Used to control the scroll offset, but also useful for setting an initial scroll offset.                                                                                                                                        |
 | scrollToIndex     | `number`                                           | `-1`                 | Item index to scroll to (by forcefully scrolling if necessary).                                                                                                                                                                 |
@@ -135,59 +137,19 @@ Also works pretty well with [`svelte-infinite-loading`](https://github.com/jonas
 - `header` - Snippet for the elements that should appear at the top of the list
 - `footer` - Snippet for the elements that should appear at the bottom of the list (e.g. `InfiniteLoading` component from `svelte-infinite-loading`)
 
-### Methods
-
-- `recomputeSizes(startIndex: number)` - This method force recomputes the item sizes after the specified index (these are normally cached).
-
-`VirtualList` has no way of knowing when its underlying data has changed, since it only receives a itemSize property. If the itemSize is a `number`, this isn't an issue, as it can compare before and after values and automatically call `recomputeSizes` internally.
-However, if you're passing a function to `itemSize`, that type of comparison is error prone. In that event, you'll need to call `recomputeSizes` manually to inform the `VirtualList` that the size of its items has changed.
-
-#### Use the methods like this:
-
-```svelte
-<script>
-	import { onMount } from 'svelte';
-	import VirtualList from 'svelte-tiny-virtual-list';
-
-	const data = ['A', 'B', 'C', 'D', 'E', 'F' /* ... */];
-
-	let virtualList;
-
-	function handleClick() {
-		virtualList.recomputeSizes(0);
-	}
-</script>
-
-<button onclick={handleClick}>Recompute Sizes</button>
-
-<VirtualList
-	bind:this={virtualList}
-	width="100%"
-	height={600}
-	itemCount={data.length}
-	itemSize={50}
->
-	{#snippet item({ style, index })}
-		<div {style}>
-			Letter: {data[index]}, Row: #{index}
-		</div>
-	{/snippet}
-</VirtualList>
-```
-
 ### Styling
 
 You can style the elements of the virtual list like this:
 
 ```svelte
 <script>
-	import VirtualList from 'svelte-tiny-virtual-list';
+	import VirtualList from '@tutorlatin/svelte-tiny-virtual-list';
 
 	const data = ['A', 'B', 'C', 'D', 'E', 'F' /* ... */];
 </script>
 
 <div class="list">
-	<VirtualList width="100%" height={600} itemCount={data.length} itemSize={50}>
+	<VirtualList height={600} itemCount={data.length} itemSize={50}>
 		{#snippet item({ style, index })}
 			<div {style}>
 				Letter: {data[index]}, Row: #{index}
@@ -198,13 +160,17 @@ You can style the elements of the virtual list like this:
 
 <style>
 	.list :global(.virtual-list-wrapper) {
-		background-color: #0f0;
+		background-color: yellow;
 		/* ... */
 	}
 
 	.list :global(.virtual-list-inner) {
-		background-color: #f00;
+		background-color: red;
 		/* ... */
+	}
+
+	.list {
+		--virtual-list-sticky-bg: red;
 	}
 </style>
 ```

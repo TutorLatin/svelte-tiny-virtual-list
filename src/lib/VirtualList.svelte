@@ -2,36 +2,37 @@
 	import { untrack } from 'svelte';
 	import SizeAndPositionManager from './SizeAndPositionManager.js';
 	import {
-		ALIGNMENT,
 		DIRECTION,
 		SCROLL_CHANGE_REASON,
 		SCROLL_PROP,
-		SCROLL_PROP_LEGACY
+		SCROLL_PROP_LEGACY,
+		DEFAULTS
 	} from './constants.js';
 	import { ListState } from './utils/ListState.svelte.js';
-	import { ListProps } from './utils/ListProps.svelte.js';
+	import { useDebounce } from './utils/useDebounce.js';
+
 	/** @import { VirtualListProps, VirtualListEvents, VirtualListSnippets } from './types.js'; */
 
 	/** @type {VirtualListProps & VirtualListEvents & VirtualListSnippets} */
 	let {
 		/* Props: */
 
-		height = '100%',
-		width = '100%',
+		height = DEFAULTS.height.external,
+		width = DEFAULTS.width.external,
 
 		itemCount,
 		itemSize,
-		estimatedItemSize = 0,
-		stickyIndices = [],
+		estimatedItemSize = DEFAULTS.estimatedItemSize,
+		stickyIndices = DEFAULTS.stickyIndices,
 		getKey,
 
-		scrollDirection = DIRECTION.VERTICAL,
-		scrollOffset = 0,
-		scrollToIndex = -1,
-		scrollToAlignment = ALIGNMENT.START,
-		scrollToBehaviour = 'instant',
+		scrollDirection = DEFAULTS.scrollDirection,
+		scrollOffset = DEFAULTS.scrollOffset,
+		scrollToIndex = DEFAULTS.scrollToIndex,
+		scrollToAlignment = DEFAULTS.scrollToAlignment,
+		scrollToBehaviour = DEFAULTS.scrollToBehaviour,
 
-		overscanCount = 3,
+		overscanCount = DEFAULTS.overscanCount,
 
 		/* Events: */
 
@@ -49,150 +50,95 @@
 		footer: footerSnippet
 	} = $props();
 
+	/** @type {ReturnType<typeof useDebounce>} */
+	const debounceRecomputeSizes = useDebounce();
+	/** @type {ReturnType<typeof useDebounce>} */
+	const debounceUpdateConfig = useDebounce();
+	/** @type {ReturnType<typeof useDebounce>} */
+	const debounceRefresh = useDebounce();
+
 	/** @type {HTMLDivElement} */
 	let wrapper;
-
 	/** @type {Record<number, string>} */
-	let styleCache = $state({});
-	let wrapperStyle = $state.raw('');
-	let innerStyle = $state.raw('');
+	let styleCache = {};
+	/** @type {Set<number>|null} */
+	let stickySet = null;
+	/** @type {ResizeObserver|undefined} */
+	let ro;
 
+	/** @type {string} */
+	let wrapperStyle = $state('');
+	/** @type {string} */
+	let innerStyle = $state('');
+	/** @type {number} */
 	let wrapperHeight = $state(400);
+	/** @type {number} */
 	let wrapperWidth = $state(400);
+	/** @type {number} */
+	let totalSize = $state(0);
 
-	/** @type {{ index: number, style: string }[]} */
+	/** @type {{ index: number, style: string, sticky?: boolean }[]} */
 	let items = $state.raw([]);
 
-	const _props = new ListProps(
-		scrollToIndex,
-		scrollToAlignment,
-		scrollOffset,
-		itemCount,
-		itemSize,
-		estimatedItemSize,
-		Number.isFinite(height) ? height : 400,
-		Number.isFinite(width) ? width : 400,
-		stickyIndices
-	);
+	/** @type {ListState} */
+	const _state = new ListState(scrollOffset || 0, width, height);
 
-	const _state = new ListState(scrollOffset || 0);
+	/** @type {SizeAndPositionManager} */
+	const sizeAndPositionManager = new SizeAndPositionManager(itemSize, itemCount, estimatedItemSize);
 
-	const sizeAndPositionManager = new SizeAndPositionManager(
-		itemSize,
-		itemCount,
-		_props.estimatedItemSize
-	);
+	// Velocity-aware overscan
+	/** @type {number} */
+	let lastTs = 0;
+	/** @type {number} */
+	let lastOffset = 0;
+	/** @type {number} */
+	let velocityPxPerMs = 0;
+	/** @type {number} */
+	const VELOCITY_ALPHA = 0.4;
+	/** @type {number} */
+	const MAX_OVERSCAN_BOOST = 20;
 
-	// Effect 0: Event listener
-	$effect(() => {
-		const options = { passive: true };
-		wrapper.addEventListener('scroll', handleScroll, options);
-
-		return () => {
-			// @ts-expect-error because options is not really needed, but maybe in the future
-			wrapper.removeEventListener('scroll', handleScroll, options);
-		};
-	});
-
-	// Effect 1: Update props from user provided props
-	$effect(() => {
-		_props.listen(
-			scrollToIndex,
-			scrollToAlignment,
-			scrollOffset,
-			itemCount,
-			itemSize,
-			estimatedItemSize,
-			Number.isFinite(height) ? height : wrapperHeight,
-			Number.isFinite(width) ? width : wrapperWidth,
-			stickyIndices
-		);
-
-		untrack(() => {
-			let doRecomputeSizes = false;
-
-			if (_props.haveSizesChanged) {
-				sizeAndPositionManager.updateConfig(itemSize, itemCount, _props.estimatedItemSize);
-				doRecomputeSizes = true;
-			}
-
-			if (_props.hasScrollOffsetChanged)
-				_state.listen(_props.scrollOffset, SCROLL_CHANGE_REASON.REQUESTED);
-			else if (_props.hasScrollIndexChanged)
-				_state.listen(
-					getOffsetForIndex(scrollToIndex, scrollToAlignment),
-					SCROLL_CHANGE_REASON.REQUESTED
-				);
-
-			if (_props.haveDimsOrStickyIndicesChanged || doRecomputeSizes) recomputeSizes();
-
-			_props.update();
-		});
-	});
-
-	// Effect 2: Update UI from state
-	$effect(() => {
-		_state.offset;
-
-		untrack(() => {
-			if (_state.doRefresh) refresh();
-
-			if (_state.doScrollToOffset) scrollTo(_state.offset);
-
-			_state.update();
-		});
-	});
+	const computeDynamicOverscan = () => {
+		const boost = Math.min(MAX_OVERSCAN_BOOST, Math.round(velocityPxPerMs * 8));
+		return overscanCount + (boost | 0);
+	};
 
 	/**
-	 * Recomputes the sizes of the items and updates the visible items.
+	 * Recomputes the visible items.
 	 */
 	const refresh = () => {
+		const viewSize = scrollDirection === DIRECTION.VERTICAL ? _state.height : _state.width;
+		const dynOverscan = computeDynamicOverscan();
 		const { start, end } = sizeAndPositionManager.getVisibleRange(
-			scrollDirection === DIRECTION.VERTICAL ? _props.height : _props.width,
+			viewSize,
 			_state.offset,
-			overscanCount
+			dynOverscan
 		);
 
-		/** @type {{ index: number, style: string }[]} */
-		const visibleItems = [];
+		/** @type {{ index: number, style: string, sticky?: boolean }[]} */
+		const next = [];
 
-		const totalSize = sizeAndPositionManager.getTotalSize();
-		const heightUnit = typeof height === 'number' ? 'px' : '';
-		const widthUnit = typeof width === 'number' ? 'px' : '';
-
-		if (scrollDirection === DIRECTION.VERTICAL) {
-			wrapperStyle = `height:${height}${heightUnit};width:${width}${widthUnit};`;
-			innerStyle = `flex-direction:column;height:${totalSize}px;`;
-		} else {
-			wrapperStyle = `height:${height}${heightUnit};width:${width}${widthUnit};`;
-			innerStyle = `min-height:100%;width:${totalSize}px;`;
-		}
-
-		const hasStickyIndices = stickyIndices.length > 0;
-		if (hasStickyIndices) {
-			for (const index of stickyIndices) {
-				visibleItems.push({
-					index,
-					style: getStyle(index, true)
-				});
+		if (stickySet) {
+			for (const index of stickySet) {
+				next.push({ index, style: getStyle(index, true), sticky: true });
 			}
 		}
 
 		if (start !== undefined && end !== undefined) {
 			for (let index = start; index <= end; index++) {
-				if (hasStickyIndices && stickyIndices.includes(index)) continue;
-
-				visibleItems.push({
-					index,
-					style: getStyle(index, false)
-				});
+				if (stickySet && stickySet.has(index)) continue;
+				next.push({ index, style: getStyle(index, false) });
 			}
 
-			if (handleItemsUpdated) handleItemsUpdated({ start, end });
-			if (handleListItemsUpdate) handleListItemsUpdate({ start, end }); // DEPRECATED
+			if (handleItemsUpdated) {
+				handleItemsUpdated({ start, end });
+			}
+			if (handleListItemsUpdate) {
+				handleListItemsUpdate({ start, end });
+			}
 		}
 
-		items = visibleItems;
+		items = next;
 	};
 
 	/**
@@ -200,20 +146,28 @@
 	 * @param {number} value
 	 */
 	const scrollTo = (value) => {
-		wrapper.scroll({
-			[SCROLL_PROP[scrollDirection]]: value,
-			behavior: scrollToBehaviour
-		});
+		try {
+			wrapper.scroll({
+				[SCROLL_PROP[scrollDirection]]: value,
+				behavior: scrollToBehaviour
+			});
+		} catch {
+			// Safari/legacy fallback
+			wrapper[SCROLL_PROP_LEGACY[scrollDirection]] = value;
+		}
 	};
 
 	/**
 	 * Recomputes the sizes of the items in the list.
 	 * @param {number} startIndex
 	 */
-	export const recomputeSizes = (startIndex = scrollToIndex) => {
+	const recomputeSizes = (startIndex = scrollToIndex) => {
 		styleCache = {};
-		if (startIndex >= 0) sizeAndPositionManager.resetItem(startIndex);
-		refresh();
+		if (startIndex >= 0) {
+			sizeAndPositionManager.resetItem(startIndex);
+		}
+		totalSize = sizeAndPositionManager.getTotalSize();
+		debounceRefresh.start(refresh);
 	};
 
 	/**
@@ -223,10 +177,9 @@
 	 */
 	const getOffsetForIndex = (index, align = scrollToAlignment) => {
 		if (index < 0 || index >= itemCount) index = 0;
-
 		return sizeAndPositionManager.getUpdatedOffsetForIndex(
 			align,
-			scrollDirection === DIRECTION.VERTICAL ? _props.height : _props.width,
+			scrollDirection === DIRECTION.VERTICAL ? _state.height : _state.width,
 			_state.offset || 0,
 			index
 		);
@@ -238,10 +191,18 @@
 	 */
 	const handleScroll = (event) => {
 		const offset = getWrapperOffset();
-
 		if (offset < 0 || _state.offset === offset || event.target !== wrapper) return null;
 
-		_state.listen(offset, SCROLL_CHANGE_REASON.OBSERVED);
+		// velocity (EMA)
+		const now = performance.now();
+		const dt = now - lastTs || 16; // ms
+		const dv = Math.abs(offset - lastOffset);
+		const instVel = dv / dt; // px/ms
+		velocityPxPerMs = VELOCITY_ALPHA * instVel + (1 - VELOCITY_ALPHA) * velocityPxPerMs;
+		lastTs = now;
+		lastOffset = offset;
+
+		_state.setScrollOffset(offset, SCROLL_CHANGE_REASON.OBSERVED);
 
 		if (handleAfterScroll) handleAfterScroll({ offset, event });
 	};
@@ -250,9 +211,7 @@
 	 * Returns the current scroll offset of the wrapper element.
 	 * @returns {number}
 	 */
-	const getWrapperOffset = () => {
-		return wrapper[SCROLL_PROP_LEGACY[scrollDirection]];
-	};
+	const getWrapperOffset = () => wrapper[SCROLL_PROP_LEGACY[scrollDirection]];
 
 	/**
 	 * Returns the style for a given item index.
@@ -268,31 +227,164 @@
 
 		if (scrollDirection === DIRECTION.VERTICAL) {
 			style = `left:0;width:100%;height:${size}px;`;
-
-			if (sticky)
-				style += `position:sticky;flex-grow:0;z-index:1;top:0;margin-top:${offset}px;margin-bottom:${-(offset + size)}px;`;
-			else style += `position:absolute;top:${offset}px;`;
+			if (sticky) {
+				style +=
+					`position:sticky;flex-grow:0;z-index:2;top:0;margin-top:${offset}px;margin-bottom:${-(offset + size)}px;` +
+					`background:var(--virtual-list-sticky-bg, inherit);transform:translateZ(0);`;
+			} else {
+				style += `position:absolute;top:${offset}px;`;
+			}
 		} else {
 			style = `top:0;width:${size}px;`;
-
-			if (sticky)
-				style += `position:sticky;z-index:1;left:0;margin-left:${offset}px;margin-right:${-(offset + size)}px;`;
-			else style += `position:absolute;height:100%;left:${offset}px;`;
+			if (sticky) {
+				style +=
+					`position:sticky;z-index:2;left:0;margin-left:${offset}px;margin-right:${-(offset + size)}px;` +
+					`background:var(--virtual-list-sticky-bg, inherit);transform:translateZ(0);`;
+			} else {
+				style += `position:absolute;height:100%;left:${offset}px;`;
+			}
 		}
 
 		styleCache[index] = style;
 
 		return styleCache[index];
 	};
+
+	// ================= Effects =================
+	$effect(() => {
+		const options = { passive: true };
+		wrapper.addEventListener('scroll', handleScroll, options);
+
+		if (typeof ResizeObserver !== 'undefined') {
+			ro = new ResizeObserver((entries) => {
+				for (const entry of entries) {
+					const box = entry.contentBoxSize?.[0] || entry.contentBoxSize;
+					if (box) {
+						wrapperWidth = Math.round(entry.contentRect.width);
+						wrapperHeight = Math.round(entry.contentRect.height);
+					} else {
+						wrapperWidth = Math.round(entry.contentRect.width);
+						wrapperHeight = Math.round(entry.contentRect.height);
+					}
+				}
+			});
+			ro.observe(wrapper);
+		}
+
+		return () => {
+			// @ts-expect-error because options is not really needed, but maybe in the future
+			wrapper.removeEventListener('scroll', handleScroll, options);
+			debounceRecomputeSizes.stop();
+			debounceUpdateConfig.stop();
+			debounceRefresh.stop();
+			if (ro) ro.disconnect();
+		};
+	});
+
+	$effect(() => {
+		(itemCount, itemSize, estimatedItemSize);
+
+		untrack(() => {
+			const sizeIsNumber = Number.isFinite(itemSize);
+			const sizeIsArray = Array.isArray(itemSize);
+			const sizeIsFn = typeof itemSize === 'function';
+
+			if (!Number.isFinite(itemCount) || !(sizeIsNumber || sizeIsArray || sizeIsFn)) return null;
+
+			debounceUpdateConfig.start(() => {
+				sizeAndPositionManager.updateConfig(itemSize, itemCount, estimatedItemSize);
+				totalSize = sizeAndPositionManager.getTotalSize();
+			});
+
+			debounceRecomputeSizes.start(recomputeSizes);
+		});
+	});
+
+	$effect(() => {
+		(height, width, scrollDirection);
+
+		untrack(() => {
+			const heightUnit = typeof height === 'number' ? 'px' : '';
+			const widthUnit = typeof width === 'number' ? 'px' : '';
+			wrapperStyle = `height:${height}${heightUnit};width:${width}${widthUnit};`;
+		});
+	});
+
+	$effect(() => {
+		(height, width, wrapperHeight, wrapperWidth);
+
+		untrack(() => {
+			_state.setDims(
+				Number.isFinite(width) ? width : wrapperWidth,
+				Number.isFinite(height) ? height : wrapperHeight
+			);
+			debounceRecomputeSizes.start(recomputeSizes);
+		});
+	});
+
+	$effect(() => {
+		stickyIndices;
+
+		untrack(() => {
+			stickySet =
+				Array.isArray(stickyIndices) && stickyIndices.length > 0 ? new Set(stickyIndices) : null;
+			debounceRefresh.start(refresh);
+		});
+	});
+
+	$effect(() => {
+		(scrollToIndex, scrollToAlignment);
+
+		untrack(() => {
+			if (!Number.isFinite(scrollToIndex) || typeof scrollToAlignment !== 'string') return null;
+
+			_state.setScrollOffset(
+				getOffsetForIndex(scrollToIndex, scrollToAlignment),
+				SCROLL_CHANGE_REASON.REQUESTED
+			);
+		});
+	});
+
+	$effect(() => {
+		scrollOffset;
+
+		untrack(() => {
+			if (!Number.isFinite(scrollOffset)) return null;
+
+			_state.setScrollOffset(scrollOffset, SCROLL_CHANGE_REASON.REQUESTED);
+		});
+	});
+
+	$effect(() => {
+		(_state.offset, _state.scrollChangeReason);
+
+		untrack(() => {
+			debounceRefresh.start(refresh);
+		});
+	});
+
+	$effect(() => {
+		_state.offset;
+
+		untrack(() => {
+			scrollTo(_state.offset);
+		});
+	});
+
+	$effect(() => {
+		(totalSize, scrollDirection);
+
+		untrack(() => {
+			if (scrollDirection === DIRECTION.VERTICAL) {
+				innerStyle = `flex-direction:column;height:${totalSize}px;`;
+			} else {
+				innerStyle = `min-height:100%;width:${totalSize}px;`;
+			}
+		});
+	});
 </script>
 
-<div
-	bind:this={wrapper}
-	bind:offsetHeight={wrapperHeight}
-	bind:offsetWidth={wrapperWidth}
-	class="virtual-list-wrapper"
-	style={wrapperStyle}
->
+<div bind:this={wrapper} class="virtual-list-wrapper" style={wrapperStyle}>
 	{#if headerSnippet}
 		{@render headerSnippet()}
 	{/if}
@@ -313,11 +405,13 @@
 		overflow: auto;
 		will-change: transform;
 		-webkit-overflow-scrolling: touch;
+		contain: layout paint;
 	}
 
 	.virtual-list-inner {
 		position: relative;
 		display: flex;
 		width: 100%;
+		contain: layout paint;
 	}
 </style>

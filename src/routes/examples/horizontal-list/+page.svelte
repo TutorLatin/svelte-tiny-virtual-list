@@ -1,7 +1,5 @@
 <script>
 	import VirtualList from '$lib/VirtualList.svelte';
-
-	let width = $state(500);
 </script>
 
 <svelte:head>
@@ -12,14 +10,8 @@
 	<h3>Horizontal list</h3>
 
 	<article>
-		<div bind:clientWidth={width} class="row scroll">
-			<VirtualList
-				height="200px"
-				{width}
-				scrollDirection="horizontal"
-				itemCount={100000}
-				itemSize={150}
-			>
+		<div class="row scroll">
+			<VirtualList scrollDirection="horizontal" itemCount={100000} itemSize={150}>
 				{#snippet item({ style, index })}
 					<div {style} class="virtual-list-col">
 						Item #{index}
@@ -31,3 +23,9 @@
 
 	<!-- TODO: Show example code -->
 </div>
+
+<style>
+	article > div {
+		height: 200px;
+	}
+</style>

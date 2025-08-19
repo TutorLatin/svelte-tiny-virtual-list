@@ -1,7 +1,7 @@
 <script>
 	import VirtualList from '$lib/VirtualList.svelte';
 
-	let itemSize = 50;
+	let itemSize = $state(50);
 </script>
 
 <svelte:head>
@@ -20,7 +20,7 @@
 	</div>
 
 	<article>
-		<VirtualList height={500} width="auto" itemCount={100000} {itemSize}>
+		<VirtualList itemCount={100000} {itemSize}>
 			{#snippet item({ style, index })}
 				<div {style} class="virtual-list-row">
 					Item #{index}
@@ -31,3 +31,9 @@
 
 	<!-- TODO: Show example code -->
 </div>
+
+<style>
+	article {
+		height: 500px;
+	}
+</style>

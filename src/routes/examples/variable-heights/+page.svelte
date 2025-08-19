@@ -1,7 +1,7 @@
 <script>
 	import VirtualList from '$lib/VirtualList.svelte';
 
-	let rowHeights = $state([]);
+	let rowHeights = $state.raw([]);
 
 	randomize();
 
@@ -12,6 +12,7 @@
 			newRowHeights.push(Math.random() * (155 - 50) + 50);
 		}
 
+		// Replace the array reference to trigger updates
 		rowHeights = newRowHeights;
 	}
 </script>
@@ -29,7 +30,7 @@
 	</button>
 
 	<article>
-		<VirtualList height={500} width="auto" itemCount={10000} itemSize={rowHeights}>
+		<VirtualList itemCount={10000} itemSize={rowHeights}>
 			{#snippet item({ style, index })}
 				<div {style} class="virtual-list-row">
 					Item #{index}
@@ -40,3 +41,9 @@
 
 	<!-- TODO: Show example code -->
 </div>
+
+<style>
+	article {
+		height: 500px;
+	}
+</style>
