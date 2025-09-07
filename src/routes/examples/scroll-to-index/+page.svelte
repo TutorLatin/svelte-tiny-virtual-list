@@ -1,7 +1,7 @@
 <script>
 	import VirtualList from '$lib/VirtualList.svelte';
 
-	let virtualList = $state.raw();
+	/** @type {number[]} */
 	let rowHeights = $state.raw([]);
 
 	let scrollToIndex = $state(-1);
@@ -60,7 +60,6 @@
 
 	<article>
 		<VirtualList
-			bind:this={virtualList}
 			itemCount={10000}
 			itemSize={(index) => rowHeights[index]}
 			{scrollToIndex}

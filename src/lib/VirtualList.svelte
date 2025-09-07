@@ -81,7 +81,11 @@
 	let items = $state.raw([]);
 
 	/** @type {ListState} */
-	const _state = new ListState(scrollOffset || 0, width, height);
+	const _state = new ListState(
+		scrollOffset || 0,
+		Number.isFinite(width) ? Number(width) : DEFAULTS.width.internal,
+		Number.isFinite(height) ? Number(height) : DEFAULTS.height.internal
+	);
 
 	/** @type {SizeAndPositionManager} */
 	const sizeAndPositionManager = new SizeAndPositionManager(itemSize, itemCount, estimatedItemSize);
@@ -315,8 +319,8 @@
 
 		untrack(() => {
 			_state.setDims(
-				Number.isFinite(width) ? width : wrapperWidth,
-				Number.isFinite(height) ? height : wrapperHeight
+				Number.isFinite(width) ? Number(width) : wrapperWidth,
+				Number.isFinite(height) ? Number(height) : wrapperHeight
 			);
 			debounceRecomputeSizes.start(recomputeSizes);
 		});
