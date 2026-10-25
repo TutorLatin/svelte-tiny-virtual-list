@@ -178,6 +178,17 @@ You can style the elements of the virtual list like this:
 </style>
 ```
 
+## Performance
+
+Fixed item sizes (`itemSize={50}`) use constant-time size and position calculations without a
+measurement cache for every item. Row styles are cached only for the rendered window and sticky rows,
+and overlapping rows reuse their render data while scrolling.
+
+For variable heights, set `estimatedItemSize` close to a typical row size to improve the initial scroll
+extent before callback-sized items are measured. See
+[the benchmark guide](https://github.com/TutorLatin/svelte-tiny-virtual-list/blob/main/benchmarks/README.md)
+for repeatable initialization, memory, and scrolling measurements.
+
 ## Examples / Demo
 
 - **Basic setup**

@@ -185,6 +185,21 @@ test('a header is excluded from the visible item offset', async () => {
 		.toBe('0');
 });
 
+test('header margins can move the list without changing the header size', async () => {
+	const { container, wrapper } = await renderList({ overscanCount: 0 }, 200);
+	await nextFrames();
+	const header = container.querySelector('.virtual-list-header > div');
+	if (!(header instanceof HTMLDivElement)) throw new Error('Missing list header');
+	const headerContainer = header.parentElement;
+	const height = headerContainer?.getBoundingClientRect().height;
+	header.style.marginBottom = '1000px';
+	expect(headerContainer?.getBoundingClientRect().height).toBe(height);
+	wrapper.scrollTop = 1200;
+	await expect
+		.element(page.elementLocator(container).getByText('Item 0', { exact: true }))
+		.toBeVisible();
+});
+
 test('scrolling to an item includes the header size in the target offset', async () => {
 	const { component, container, wrapper } = await renderList({}, 500);
 	await nextFrames();
@@ -248,3 +263,67 @@ for (const estimatedItemSize of [0, 20]) {
 		expect(measurements).toBeLessThan(100);
 	});
 }
+
+test('scrolling inside the same row does not reevaluate its snippet', async () => {
+	/** @type {Map<number, number>} */
+	const evaluations = new Map();
+	const { container } = await render(VirtualListTest, {
+		initialOptions: { itemSize: 1000, itemCount: 1000, overscanCount: 0 },
+		onItemEvaluate: (index) => evaluations.set(index, (evaluations.get(index) ?? 0) + 1)
+	});
+	const wrapper = getWrapper(container);
+	await expect
+		.element(page.elementLocator(container).getByText('Item 0', { exact: true }))
+		.toBeVisible();
+	await nextFrames();
+	const firstRow = getRow(container, 0);
+	const initialEvaluations = evaluations.get(0);
+	for (const offset of [1, 2, 3]) {
+		wrapper.scrollTop = offset;
+		await nextFrames();
+	}
+	expect(getRow(container, 0)).toBe(firstRow);
+	expect(evaluations.get(0)).toBe(initialEvaluations);
+});
+
+test('extending the visible range preserves overlapping row snippets', async () => {
+	/** @type {Map<number, number>} */
+	const evaluations = new Map();
+	const { container } = await render(VirtualListTest, {
+		initialOptions: { itemSize: 100, itemCount: 1000, overscanCount: 0 },
+		onItemEvaluate: (index) => evaluations.set(index, (evaluations.get(index) ?? 0) + 1)
+	});
+	const wrapper = getWrapper(container);
+	await expect
+		.element(page.elementLocator(container).getByText('Item 1', { exact: true }))
+		.toBeVisible();
+	await nextFrames();
+	const row = getRow(container, 1);
+	const initialEvaluations = evaluations.get(1);
+	expect(getRow(container, 2)).toBeNull();
+	wrapper.scrollTop = 50;
+	await expect
+		.element(page.elementLocator(container).getByText('Item 2', { exact: true }))
+		.toBeVisible();
+	await nextFrames();
+	expect(getRow(container, 1)).toBe(row);
+	expect(evaluations.get(1)).toBe(initialEvaluations);
+	expect(evaluations.get(2)).toBeGreaterThan(0);
+});
+
+test('reusing row snippets still renders new data when the row count stays the same', async () => {
+	const initialRows = Array.from({ length: 4 }, (_, index) => ({ label: `Old row ${index}` }));
+	const { component, container } = await render(VirtualListTest, { initialRows });
+	await expect
+		.element(page.elementLocator(container).getByText('Old row 0', { exact: true }))
+		.toBeVisible();
+	const firstRow = getRow(container, 0);
+	component.replaceRows(initialRows.map((_, index) => ({ label: `New row ${index}` })));
+	await expect
+		.element(page.elementLocator(container).getByText('New row 0', { exact: true }))
+		.toBeVisible();
+	await expect
+		.element(page.elementLocator(container).getByText('New row 3', { exact: true }))
+		.toBeVisible();
+	expect(getRow(container, 0)).toBe(firstRow);
+});

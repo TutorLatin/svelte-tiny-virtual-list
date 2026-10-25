@@ -8,12 +8,25 @@
  * @returns {Debounce}
  */
 export const useDebounce = () => {
-	let animationFrameId = -1;
+	/** @type {number | null} */
+	let animationFrameId = null;
+	/** @type {(() => void) | undefined} */
+	let callback;
 	return {
 		start: (fn = () => null) => {
-			cancelAnimationFrame(animationFrameId);
-			animationFrameId = requestAnimationFrame(() => fn());
+			callback = fn;
+			if (animationFrameId !== null) return;
+			animationFrameId = requestAnimationFrame(() => {
+				animationFrameId = null;
+				const next = callback;
+				callback = undefined;
+				next?.();
+			});
 		},
-		stop: () => cancelAnimationFrame(animationFrameId)
+		stop: () => {
+			if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+			animationFrameId = null;
+			callback = undefined;
+		}
 	};
 };

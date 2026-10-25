@@ -12,6 +12,7 @@
 	import { useDebounce } from './utils/useDebounce.js';
 
 	/** @import { VirtualListProps, VirtualListEvents, VirtualListSnippets, Alignment } from './types.js'; */
+	/** @typedef {{ index: number, style: string }} RenderedItem */
 	/** @type {VirtualListProps & VirtualListEvents & VirtualListSnippets} */
 	let {
 		height = DEFAULTS.height.external,
@@ -43,13 +44,15 @@
 	let inner;
 	/** @type {HTMLDivElement} */
 	let header;
-	/** @type {Record<number, string>} */
-	let styleCache = {};
+	/** @type {Record<number, RenderedItem>} */
+	let itemCache = {};
+	/** @type {{ start?: number, end?: number } | null} */
+	let renderedRange = null;
 	/** @type {Set<number>} */
 	let stickySet = new Set();
 	let wrapperStyle = $state('');
 	let innerStyle = $state('');
-	/** @type {{ index: number, style: string }[]} */
+	/** @type {RenderedItem[]} */
 	let items = $state.raw([]);
 
 	const _state = new ListState();
@@ -67,23 +70,31 @@
 	let velocityPxPerMs = 0;
 	const VELOCITY_ALPHA = 0.4;
 	const MAX_OVERSCAN_BOOST = 20;
+	let viewportSize = 0;
+	let listOffset = 0;
 
 	const computeDynamicOverscan = () =>
 		Math.max(0, overscanCount) + Math.min(MAX_OVERSCAN_BOOST, Math.round(velocityPxPerMs * 8));
 	const getWrapperOffset = () => wrapper[SCROLL_PROP_LEGACY[scrollDirection]];
-	const getViewSize = () =>
-		scrollDirection === DIRECTION.VERTICAL ? wrapper.clientHeight : wrapper.clientWidth;
-	const getListOffset = () => {
+	const measureLayout = () => {
+		const previousViewport = viewportSize;
+		const previousOffset = listOffset;
+		viewportSize =
+			scrollDirection === DIRECTION.VERTICAL ? wrapper.clientHeight : wrapper.clientWidth;
 		const outer = wrapper.getBoundingClientRect();
 		const content = inner.getBoundingClientRect();
-		return scrollDirection === DIRECTION.VERTICAL
-			? content.top - outer.top + wrapper.scrollTop - wrapper.clientTop
-			: content.left - outer.left + wrapper.scrollLeft - wrapper.clientLeft;
+		listOffset =
+			scrollDirection === DIRECTION.VERTICAL
+				? content.top - outer.top + wrapper.scrollTop - wrapper.clientTop
+				: content.left - outer.left + wrapper.scrollLeft - wrapper.clientLeft;
+		// Recheck position each frame: CSS margins can move the list without a resize event.
+		return viewportSize !== previousViewport || listOffset !== previousOffset;
 	};
 
 	/** @param {number} index */
-	const getStyle = (index) => {
-		if (styleCache[index]) return styleCache[index];
+	const getItem = (index) => {
+		const cached = itemCache[index];
+		if (cached) return cached;
 		const { size, offset } = sizeAndPositionManager.getSizeAndPositionForIndex(index);
 		const sticky = stickySet.has(index);
 		let style;
@@ -100,15 +111,12 @@
 		}
 		if (sticky)
 			style += 'background:var(--virtual-list-sticky-bg, inherit);transform:translateZ(0);';
-		styleCache[index] = style;
-		return style;
+		return { index, style };
 	};
 
 	/** @param {number} offset */
 	const refresh = (offset) => {
-		const viewport = getViewSize();
-		const listOffset = getListOffset();
-		const visibleSize = Math.max(0, viewport - Math.max(0, listOffset - offset));
+		const visibleSize = Math.max(0, viewportSize - Math.max(0, listOffset - offset));
 		const range =
 			visibleSize > 0
 				? sizeAndPositionManager.getVisibleRange(
@@ -117,41 +125,59 @@
 						computeDynamicOverscan()
 					)
 				: {};
-		/** @type {{ index: number, style: string }[]} */
-		const next = [];
-		for (const index of stickySet) next.push({ index, style: getStyle(index) });
-		if (range.start !== undefined && range.end !== undefined) {
-			for (let index = range.start; index <= range.end; index++) {
-				if (!stickySet.has(index)) next.push({ index, style: getStyle(index) });
+		if (!renderedRange || range.start !== renderedRange.start || range.end !== renderedRange.end) {
+			/** @type {RenderedItem[]} */
+			const next = [];
+			/** @type {Record<number, RenderedItem>} */
+			const nextCache = {};
+			for (const index of stickySet) {
+				const item = getItem(index);
+				next.push(item);
+				nextCache[index] = item;
+			}
+			if (range.start !== undefined && range.end !== undefined) {
+				for (let index = range.start; index <= range.end; index++) {
+					if (stickySet.has(index)) continue;
+					const item = getItem(index);
+					next.push(item);
+					nextCache[index] = item;
+				}
+			}
+			// Keep descriptor identity for overlapping rows, and retain only the current window.
+			itemCache = nextCache;
+			renderedRange = range;
+			if (next.length !== items.length || next.some((item, index) => item !== items[index])) {
+				items = next;
 			}
 		}
-		items = next;
 		// Reading and styling rows may measure additional callback-sized items.
 		const totalSize = sizeAndPositionManager.getTotalSize();
-		innerStyle =
+		const style =
 			scrollDirection === DIRECTION.VERTICAL
 				? `flex-direction:column;height:${totalSize}px;`
 				: `min-height:100%;width:${totalSize}px;`;
+		const extentChanged = innerStyle !== style;
+		if (extentChanged) innerStyle = style;
 		if (range.start !== undefined && range.end !== undefined) {
 			handleItemsUpdated?.({ start: range.start, end: range.end });
 			handleListItemsUpdate?.({ start: range.start, end: range.end });
 		}
+		return extentChanged;
 	};
 
 	/** @param {number} index @param {Alignment} align */
 	const getOffsetForIndex = (index, align) => {
 		index = Math.min(index, itemCount - 1);
 		const datum = sizeAndPositionManager.getSizeAndPositionForIndex(index);
-		const viewport = getViewSize();
 		// Measure enough rows after the target to align it even with a zero estimate.
-		sizeAndPositionManager.getVisibleRange(viewport, datum.offset, computeDynamicOverscan());
-		const start = getListOffset() + datum.offset;
-		const end = start - viewport + datum.size;
+		sizeAndPositionManager.getVisibleRange(viewportSize, datum.offset, computeDynamicOverscan());
+		const start = listOffset + datum.offset;
+		const end = start - viewportSize + datum.size;
 		switch (align) {
 			case 'end':
 				return Math.max(0, end);
 			case 'center':
-				return Math.max(0, start - (viewport - datum.size) / 2);
+				return Math.max(0, start - (viewportSize - datum.size) / 2);
 			case 'auto':
 				return Math.max(0, Math.max(end, Math.min(start, getWrapperOffset())));
 			default:
@@ -171,12 +197,12 @@
 	/** @param {number} version */
 	const update = async (version) => {
 		const request = pendingScroll;
-		const viewport = getViewSize();
+		const layoutChanged = measureLayout();
 		let target;
-		if (itemCount > 0 && viewport > 0) {
+		if (itemCount > 0 && viewportSize > 0) {
 			// Bootstrap a lazily sized list before it has any measured extent.
 			if (sizeAndPositionManager.getTotalSize() === 0) {
-				sizeAndPositionManager.getVisibleRange(viewport, 0, computeDynamicOverscan());
+				sizeAndPositionManager.getVisibleRange(viewportSize, 0, computeDynamicOverscan());
 			}
 			if (request) {
 				target =
@@ -184,13 +210,14 @@
 						? getOffsetForIndex(request.index, request.align)
 						: Math.max(0, request.offset);
 				sizeAndPositionManager.getVisibleRange(
-					viewport,
-					Math.max(0, target - getListOffset()),
+					viewportSize,
+					Math.max(0, target - listOffset),
 					computeDynamicOverscan()
 				);
 			}
 		}
-		refresh(getWrapperOffset());
+		const extentChanged = refresh(getWrapperOffset());
+		if (!request && !layoutChanged && !extentChanged) return;
 		// The spacer and row styles must be in the DOM before the browser can scroll.
 		await tick();
 		if (destroyed || version !== updateVersion) return;
@@ -259,7 +286,14 @@
 			if (configChanged && previous)
 				sizeAndPositionManager.updateConfig(itemSize, itemCount, estimatedItemSize);
 			if (configChanged || axisChanged || stickyIndices !== previous?.stickyIndices) {
-				styleCache = {};
+				if (
+					itemSize !== previous?.itemSize ||
+					axisChanged ||
+					stickyIndices !== previous?.stickyIndices
+				) {
+					itemCache = {};
+				}
+				renderedRange = null;
 				stickySet = new Set(
 					stickyIndices.filter(
 						(index) => Number.isInteger(index) && index >= 0 && index < itemCount

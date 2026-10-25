@@ -78,6 +78,12 @@ export default class SizeAndPositionManager {
 		return typeof this.itemSize === 'function';
 	}
 
+	get fixedSize() {
+		return typeof this.itemSize === 'number' && Number.isFinite(this.itemSize) && this.itemSize >= 0
+			? this.itemSize
+			: undefined;
+	}
+
 	/**
 	 * @param {ItemSize} itemSize
 	 * @param {number} itemCount
@@ -130,10 +136,15 @@ export default class SizeAndPositionManager {
 	}
 
 	/**
-	 * Compute the totalSize and itemSizeAndPositionData at the start,
-	 * only when itemSize is a number or an array.
+	 * Compute the total extent for numeric sizes, or cache every position for array sizes.
 	 */
 	computeTotalSizeAndPositionData() {
+		const fixedSize = this.fixedSize;
+		if (fixedSize !== undefined) {
+			this.totalSize = fixedSize === 0 ? 0 : fixedSize * this.itemCount;
+			return;
+		}
+
 		let totalSize = 0;
 		for (let i = 0; i < this.itemCount; i++) {
 			const size = this.getSize(i);
@@ -159,8 +170,13 @@ export default class SizeAndPositionManager {
 	 * @param {number} index
 	 */
 	getSizeAndPositionForIndex(index) {
-		if (index < 0 || index >= this.itemCount) {
+		if (!Number.isInteger(index) || index < 0 || index >= this.itemCount) {
 			throw Error(`Requested index ${index} is outside of range 0..${this.itemCount}`);
+		}
+
+		const fixedSize = this.fixedSize;
+		if (fixedSize !== undefined) {
+			return { offset: fixedSize === 0 ? 0 : index * fixedSize, size: fixedSize };
 		}
 
 		return this.justInTime
@@ -288,14 +304,23 @@ export default class SizeAndPositionManager {
 			throw Error(`Invalid offset ${offset} specified`);
 		}
 
-		const datum = this.getSizeAndPositionForIndex(start);
-		offset = datum.offset + datum.size;
-
 		let end = start;
+		const fixedSize = this.fixedSize;
+		if (fixedSize !== undefined && fixedSize > 0) {
+			if ((start + 1) * fixedSize < maxOffset) {
+				end = Math.min(this.itemCount - 1, Math.ceil(maxOffset / fixedSize) - 1);
+				// Division may round an exact fractional boundary to either side.
+				if (end > start && end * fixedSize >= maxOffset) end--;
+				else if (end < this.itemCount - 1 && (end + 1) * fixedSize < maxOffset) end++;
+			}
+		} else {
+			const datum = this.getSizeAndPositionForIndex(start);
+			offset = datum.offset + datum.size;
 
-		while (offset < maxOffset && end < this.itemCount - 1) {
-			end++;
-			offset += this.getSizeAndPositionForIndex(end).size;
+			while (offset < maxOffset && end < this.itemCount - 1) {
+				end++;
+				offset += this.getSizeAndPositionForIndex(end).size;
+			}
 		}
 
 		if (overscanCount) {
@@ -336,6 +361,13 @@ export default class SizeAndPositionManager {
 		// Our search algorithms find the nearest match at or below the specified offset.
 		// So make sure the offset is at least 0 or no match will be found.
 		offset = Math.max(0, offset);
+		const fixedSize = this.fixedSize;
+		if (fixedSize !== undefined && fixedSize > 0 && this.itemCount > 0) {
+			let index = Math.min(this.itemCount - 1, Math.floor(offset / fixedSize));
+			if (index < this.itemCount - 1 && (index + 1) * fixedSize <= offset) index++;
+			else if (index * fixedSize > offset) index--;
+			return index;
+		}
 
 		const lastMeasuredSizeAndPosition = this.getSizeAndPositionOfLastMeasuredItem();
 		const lastMeasuredIndex = Math.max(0, this.lastMeasuredIndex);

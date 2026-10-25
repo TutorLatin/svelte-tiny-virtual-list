@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ALIGNMENT } from './constants.js';
 import SizeAndPositionManager from './SizeAndPositionManager.js';
 
@@ -281,6 +281,63 @@ describe('SizeAndPositionManager', () => {
 			expect(sizeAndPositionManager.getSizeAndPositionForIndex(1).offset).toEqual(itemSize);
 			expect(sizeAndPositionManager.getSizeAndPositionForIndex(2).offset).toEqual(itemSize * 2);
 		});
+
+		it('handles large fixed-size lists without resolving individual item sizes', () => {
+			const resolveSize = vi
+				.spyOn(SizeAndPositionManager.prototype, 'getSize')
+				.mockImplementation(() => {
+					throw new Error('Fixed-size lists must not measure individual items');
+				});
+			try {
+				const manager = new SizeAndPositionManager(20, 1000000000, 0);
+				expect(manager.getTotalSize()).toBe(20000000000);
+				expect(manager.getSizeAndPositionForIndex(999999999)).toEqual({
+					offset: 19999999980,
+					size: 20
+				});
+				manager.updateConfig(25, 2000000000, 0);
+				expect(manager.getTotalSize()).toBe(50000000000);
+				manager.updateConfig(25, 10, 0);
+				expect(manager.getSizeAndPositionForIndex(9)).toEqual({ offset: 225, size: 25 });
+				expect(resolveSize).not.toHaveBeenCalled();
+			} finally {
+				resolveSize.mockRestore();
+			}
+		});
+
+		it('keeps fixed-size range and nearest-item queries independent of the number of rows', () => {
+			const manager = new SizeAndPositionManager(20, 100000, 0);
+			const getPosition = manager.getSizeAndPositionForIndex.bind(manager);
+			let reads = 0;
+			const resolvePosition = vi
+				.spyOn(manager, 'getSizeAndPositionForIndex')
+				.mockImplementation((index) => {
+					if (++reads > 4) throw new Error('Fixed-size queries must not scan individual rows');
+					return getPosition(index);
+				});
+			expect(manager.findNearestItem(1500000)).toBe(75000);
+			expect(manager.getVisibleRange(2000000, 0, 0)).toEqual({ start: 0, end: 99999 });
+			expect(resolvePosition).not.toHaveBeenCalled();
+		});
+
+		it('calculates fractional positions without cumulative rounding drift', () => {
+			const manager = new SizeAndPositionManager(0.1, 100000, 0);
+			expect(manager.getTotalSize()).toBe(10000);
+			expect(manager.getSizeAndPositionForIndex(99999)).toEqual({
+				offset: 99999 * 0.1,
+				size: 0.1
+			});
+			manager.resetItem(0);
+			expect(manager.getSizeAndPositionForIndex(43)).toEqual({ offset: 43 * 0.1, size: 0.1 });
+			expect(manager.getTotalSize()).toBe(10000);
+		});
+
+		it('rejects fractional and non-finite indices', () => {
+			const manager = new SizeAndPositionManager(20, 100, 0);
+			for (const index of [0.5, NaN, Infinity, -Infinity]) {
+				expect(() => manager.getSizeAndPositionForIndex(index)).toThrow('outside of range');
+			}
+		});
 	});
 
 	describe('getSizeAndPositionForIndex when itemSize is an array', () => {
@@ -346,9 +403,12 @@ describe('SizeAndPositionManager', () => {
 		});
 
 		it('preserves a computed zero size instead of using the estimate', () => {
-			const manager = new SizeAndPositionManager(0, 10, 15);
-			expect(manager.getTotalSize()).toBe(0);
-			expect(manager.getVisibleRange(50, 0, 0)).toEqual({});
+			for (const size of [0, -0]) {
+				const manager = new SizeAndPositionManager(size, 10, 15);
+				expect(manager.getTotalSize()).toBe(0);
+				expect(manager.getSizeAndPositionForIndex(9).offset).toBe(0);
+				expect(manager.getVisibleRange(50, 0, 0)).toEqual({});
+			}
 		});
 	});
 
@@ -518,6 +578,37 @@ describe('SizeAndPositionManager', () => {
 	});
 
 	describe('getVisibleRange', () => {
+		it('honors fractional fixed-size boundaries and overscan', () => {
+			const manager = new SizeAndPositionManager(0.1, 1000, 0);
+			expect(manager.findNearestItem(43 * 0.1)).toBe(43);
+			expect(manager.findNearestItem(0.3)).toBe(2);
+			expect(manager.findNearestItem(-1)).toBe(0);
+			expect(manager.findNearestItem(1000)).toBe(999);
+			expect(manager.getVisibleRange(3 * 0.1, 0, 0)).toEqual({ start: 0, end: 2 });
+			expect(manager.getVisibleRange(0.5, 43 * 0.1, 2)).toEqual({ start: 41, end: 49 });
+			expect(manager.getVisibleRange(0, 43 * 0.1, 0)).toEqual({ start: 43, end: 43 });
+		});
+
+		it('keeps fixed-size ranges bounded at the ends of the list', () => {
+			const manager = new SizeAndPositionManager(20, 100, 0);
+			expect(manager.getVisibleRange(50, -10, 0)).toEqual({ start: 0, end: 1 });
+			expect(manager.getVisibleRange(50, 4000, 3)).toEqual({ start: 96, end: 99 });
+			expect(manager.getVisibleRange(200, 1900, 3)).toEqual({ start: 92, end: 99 });
+			expect(() => manager.getVisibleRange(50, NaN, 0)).toThrow('Invalid offset');
+		});
+
+		it('supports clearing and repopulating zero-sized fixed-size lists', () => {
+			const manager = new SizeAndPositionManager(0, 100, 10);
+			expect(manager.getSizeAndPositionForIndex(99)).toEqual({ offset: 0, size: 0 });
+			expect(manager.getVisibleRange(200, 0, 3)).toEqual({});
+			manager.updateConfig(20, 0, 10);
+			expect(manager.getTotalSize()).toBe(0);
+			expect(manager.getVisibleRange(200, 0, 3)).toEqual({});
+			expect(() => manager.getSizeAndPositionForIndex(0)).toThrow('outside of range');
+			manager.updateConfig(20, 100, 10);
+			expect(manager.getVisibleRange(50, 20, 0)).toEqual({ start: 1, end: 3 });
+		});
+
 		it('measures the initial viewport lazily when the callback estimate is zero', () => {
 			let calls = 0;
 			const manager = new SizeAndPositionManager(

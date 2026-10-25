@@ -5,8 +5,8 @@
 	/** @import { VirtualListProps } from '../lib/types.js' */
 	/** @typedef {{ label: string }} Row */
 
-	/** @type {{ initialOptions?: Partial<VirtualListProps>; headerHeight?: number; initialRows?: Row[] }} */
-	let { initialOptions = {}, headerHeight = 0, initialRows } = $props();
+	/** @type {{ initialOptions?: Partial<VirtualListProps>; headerHeight?: number; initialRows?: Row[]; onItemEvaluate?: (index: number) => void }} */
+	let { initialOptions = {}, headerHeight = 0, initialRows, onItemEvaluate } = $props();
 
 	let rows = $state.raw(untrack(() => initialRows));
 
@@ -31,6 +31,12 @@
 		rows = next;
 		options = { ...options, itemCount: next.length };
 	}
+
+	/** @param {number} index */
+	function observeItem(index) {
+		onItemEvaluate?.(index);
+		return index;
+	}
 </script>
 
 <VirtualList {...options}>
@@ -40,7 +46,7 @@
 		{/if}
 	{/snippet}
 	{#snippet item({ index, style })}
-		<div data-index={index} {style}>
+		<div data-index={observeItem(index)} {style}>
 			{#if rows}{rows[index].label}{:else}Item {index}{/if}
 		</div>
 	{/snippet}
