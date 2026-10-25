@@ -1,6 +1,6 @@
 {
 	"name": "@tutorlatin/svelte-tiny-virtual-list",
-	"version": "3.0.20",
+	"version": "4.0.0",
 	"description": "A tiny but mighty list virtualization component for svelte, with zero dependencies 💪",
 	"homepage": "https://svelte-tiny-virtual-list.jonasgeiler.com",
 	"bugs": "https://github.com/tutorlatin/svelte-tiny-virtual-list/issues",
