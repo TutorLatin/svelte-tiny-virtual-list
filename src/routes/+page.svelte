@@ -2,10 +2,10 @@
 	import readme from '../../README.md?raw';
 	import { marked } from 'marked';
 	import { baseUrl } from 'marked-base-url';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { gfmHeadingId } from 'marked-gfm-heading-id';
 
-	marked.use(baseUrl(base));
+	marked.use(baseUrl(resolve('/')));
 	marked.use(gfmHeadingId());
 	const readmeHtml = marked.parse(
 		readme

@@ -128,6 +128,9 @@ Also works pretty well with [`svelte-infinite-loading`](https://github.com/jonas
 | onAfterScroll     | `({ event: ScrollEvent, offset: number }) => void` | `undefined`          | Function that fires after handling the scroll event. Props: `event: ScrollEvent` - The original scroll event, `offset: number` - Either the value of `wrapper.scrollTop` or `wrapper.scrollLeft`                                |
 | onListItemsUpdate | `({ start: number, end: number }) => void`         | `undefined`          | Function that fires when the visible items are updated. Props: `start: number` - Index of the first visible item, `end: number` - Index of the last visible item.                                                               |
 
+When existing item sizes change, replace the `itemSize` array or callback with a new reference.
+Appending items can reuse the same callback.
+
 ### Snippets
 
 - `item` - Snippet for each item

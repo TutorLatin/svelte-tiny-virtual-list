@@ -61,6 +61,8 @@ export type VirtualListProps = (
 	 *
 	 * ⚠ If this is an array, do **not** mutate it in place (`sizes[i] = value`);
 	 * you must replace the array reference for the change to be detected.
+	 * Likewise, replace a sizing callback when previously measured sizes change.
+	 * Appending items can reuse the same callback and its cached measurements.
 	 */
 	itemSize: ItemSize;
 

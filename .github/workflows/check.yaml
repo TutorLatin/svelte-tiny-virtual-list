@@ -32,13 +32,13 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.17.0
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
         run: |
           pnpm install
-          pnpm exec playwright install firefox --with-deps
+          pnpm exec playwright install chromium firefox --with-deps
 
       - name: Check library files
         run: pnpm run check

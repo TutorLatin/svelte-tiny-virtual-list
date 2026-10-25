@@ -1,5 +1,5 @@
 <script>
-	import VirtualList from '$lib/VirtualList.svelte';
+	import VirtualList from '#lib/VirtualList.svelte';
 	import InfiniteLoading from 'svelte-infinite-loading';
 
 	const api =
@@ -7,9 +7,9 @@
 		'?tags=story' +
 		`&numericFilters=created_at_i<=${Math.floor(Date.now() / 1000)}`;
 
-	let page = $state(1);
+	let page = $state(0);
 	let listHeight = $state(0);
-	/** @type {{story_id: string, created_at: string, title: string, author: string, url: string, points: number, num_comments: number}[]} */
+	/** @type {{objectID: string, created_at: string, title: string, author: string, url: string | null, points: number, num_comments: number}[]} */
 	let list = $state([]);
 
 	/**
@@ -86,7 +86,7 @@
 							<a
 								class="inline link"
 								href={list[index].url ||
-									`https://news.ycombinator.com/item?id=${list[index].story_id}`}
+									`https://news.ycombinator.com/item?id=${list[index].objectID}`}
 								target="_blank"
 							>
 								{list[index].title}
@@ -109,14 +109,14 @@
 							<a
 								class="hacker-news-link"
 								title={list[index].created_at}
-								href="https://news.ycombinator.com/item?id={list[index].story_id}"
+								href="https://news.ycombinator.com/item?id={list[index].objectID}"
 								target="_blank">{formatCreatedAt(list[index].created_at)}</a
 							>
 							|
 							<a
 								class="hacker-news-link"
 								target="_blank"
-								href="https://news.ycombinator.com/item?id={list[index].story_id}"
+								href="https://news.ycombinator.com/item?id={list[index].objectID}"
 								>{list[index].num_comments} comments</a
 							>
 						</div>

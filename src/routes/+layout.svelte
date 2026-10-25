@@ -1,7 +1,7 @@
 <script>
-	import { base } from '$app/paths';
+	import { asset, resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 
 	let { children } = $props();
 
@@ -34,13 +34,13 @@
 	<header class="fixed">
 		<nav>
 			<i aria-hidden="true">
-				<img src="{base}/logo.svg" srcset="{base}/logo.svg 2x" alt="Logo" />
+				<img src={asset('logo.svg')} srcset="{asset('logo.svg')} 2x" alt="Logo" />
 			</i>
 			<h6>svelte-tiny-virtual-list</h6>
 		</nav>
 	</header>
 
-	<a href="/" class:active={page.route.id === '/'}>
+	<a href={resolve('/')} class:active={page.route.id === '/'}>
 		<i aria-hidden="true">description</i>
 		<div>README</div>
 	</a>
@@ -68,29 +68,35 @@
 	<div class="small-divider"></div>
 	<label for="">Examples</label>
 	<a
-		href="/examples/elements-of-equal-height"
+		href={resolve('/examples/elements-of-equal-height')}
 		class:active={page.route.id === '/examples/elements-of-equal-height'}
 	>
 		<i aria-hidden="true">view_headline</i>
 		<div>Elements of equal height</div>
 	</a>
 	<a
-		href="/examples/variable-heights"
+		href={resolve('/examples/variable-heights')}
 		class:active={page.route.id === '/examples/variable-heights'}
 	>
 		<i aria-hidden="true">view_day</i>
 		<div>Variable heights</div>
 	</a>
-	<a href="/examples/horizontal-list" class:active={page.route.id === '/examples/horizontal-list'}>
+	<a
+		href={resolve('/examples/horizontal-list')}
+		class:active={page.route.id === '/examples/horizontal-list'}
+	>
 		<i aria-hidden="true">view_week</i>
 		<div>Horizontal list</div>
 	</a>
-	<a href="/examples/scroll-to-index" class:active={page.route.id === '/examples/scroll-to-index'}>
+	<a
+		href={resolve('/examples/scroll-to-index')}
+		class:active={page.route.id === '/examples/scroll-to-index'}
+	>
 		<i aria-hidden="true">pin</i>
 		<div>Scroll to index</div>
 	</a>
 	<a
-		href="/examples/controlled-scroll-offset"
+		href={resolve('/examples/controlled-scroll-offset')}
 		class:active={page.route.id === '/examples/controlled-scroll-offset'}
 	>
 		<i aria-hidden="true">unfold_more</i>
@@ -99,7 +105,7 @@
 
 	<div class="small-divider"></div>
 	<label for="">Demos</label>
-	<a href="/demos/hacker-news" class:active={page.route.id === '/demos/hacker-news'}>
+	<a href={resolve('/demos/hacker-news')} class:active={page.route.id === '/demos/hacker-news'}>
 		<i aria-hidden="true">newspaper</i>
 		<div>Hacker News</div>
 	</a>
@@ -115,7 +121,7 @@
 		<i aria-hidden="true">menu</i>
 	</button>
 	<i aria-hidden="true">
-		<img src="{base}/logo.svg" srcset="{base}/logo.svg 2x" alt="Logo" />
+		<img src={asset('logo.svg')} srcset="{asset('logo.svg')} 2x" alt="Logo" />
 	</i>
 	<h6 class="m">svelte-tiny-virtual-list</h6>
 	<div class="max"></div>
@@ -127,7 +133,7 @@
 	<header class="fixed">
 		<nav>
 			<i aria-hidden="true">
-				<img src="{base}/logo.svg" srcset="{base}/logo.svg 2x" alt="Logo" />
+				<img src={asset('logo.svg')} srcset="{asset('logo.svg')} 2x" alt="Logo" />
 			</i>
 			<h6 class="m">svelte-tiny-virtual-list</h6>
 			<div class="max"></div>
@@ -138,7 +144,11 @@
 	</header>
 
 	<nav class="drawer no-padding no-margin">
-		<a href="/" class:active={page.route.id === '/'} onclick={() => (mobileMenuOpen = false)}>
+		<a
+			href={resolve('/')}
+			class:active={page.route.id === '/'}
+			onclick={() => (mobileMenuOpen = false)}
+		>
 			<i aria-hidden="true">description</i>
 			<div>README</div>
 		</a>
@@ -166,7 +176,7 @@
 		<div class="small-divider"></div>
 		<label for="">Examples</label>
 		<a
-			href="/examples/elements-of-equal-height"
+			href={resolve('/examples/elements-of-equal-height')}
 			class:active={page.route.id === '/examples/elements-of-equal-height'}
 			onclick={() => (mobileMenuOpen = false)}
 		>
@@ -174,7 +184,7 @@
 			<div>Elements of equal height</div>
 		</a>
 		<a
-			href="/examples/variable-heights"
+			href={resolve('/examples/variable-heights')}
 			class:active={page.route.id === '/examples/variable-heights'}
 			onclick={() => (mobileMenuOpen = false)}
 		>
@@ -182,7 +192,7 @@
 			<div>Variable heights</div>
 		</a>
 		<a
-			href="/examples/horizontal-list"
+			href={resolve('/examples/horizontal-list')}
 			class:active={page.route.id === '/examples/horizontal-list'}
 			onclick={() => (mobileMenuOpen = false)}
 		>
@@ -190,7 +200,7 @@
 			<div>Horizontal list</div>
 		</a>
 		<a
-			href="/examples/scroll-to-index"
+			href={resolve('/examples/scroll-to-index')}
 			class:active={page.route.id === '/examples/scroll-to-index'}
 			onclick={() => (mobileMenuOpen = false)}
 		>
@@ -198,7 +208,7 @@
 			<div>Scroll to index</div>
 		</a>
 		<a
-			href="/examples/controlled-scroll-offset"
+			href={resolve('/examples/controlled-scroll-offset')}
 			class:active={page.route.id === '/examples/controlled-scroll-offset'}
 			onclick={() => (mobileMenuOpen = false)}
 		>
@@ -209,7 +219,7 @@
 		<div class="small-divider"></div>
 		<label for="">Demos</label>
 		<a
-			href="/demos/hacker-news"
+			href={resolve('/demos/hacker-news')}
 			class:active={page.route.id === '/demos/hacker-news'}
 			onclick={() => (mobileMenuOpen = false)}
 		>

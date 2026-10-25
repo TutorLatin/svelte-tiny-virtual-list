@@ -84,13 +84,26 @@ export default class SizeAndPositionManager {
 	 * @param {number} estimatedItemSize
 	 */
 	updateConfig(itemSize, itemCount, estimatedItemSize) {
+		const itemSizeChanged = this.itemSize !== itemSize;
+		const previousItemCount = this.itemCount;
+
 		this.itemSize = itemSize;
 		this.itemCount = itemCount;
 		this.estimatedItemSize = estimatedItemSize;
 
 		this.checkForMismatchItemSizeAndItemCount();
 
-		if (this.justInTime && this.totalSize != null) {
+		if (itemSizeChanged) {
+			this.itemSizeAndPositionData = {};
+			this.lastMeasuredIndex = -1;
+		} else if (itemCount < previousItemCount) {
+			this.lastMeasuredIndex = Math.min(this.lastMeasuredIndex, itemCount - 1);
+			for (const index of Object.keys(this.itemSizeAndPositionData)) {
+				if (Number(index) >= itemCount) delete this.itemSizeAndPositionData[Number(index)];
+			}
+		}
+
+		if (this.justInTime) {
 			this.totalSize = undefined;
 		} else {
 			this.computeTotalSizeAndPositionData();
@@ -200,7 +213,7 @@ export default class SizeAndPositionManager {
 	 */
 	getTotalSize() {
 		// Return the pre computed totalSize when itemSize is number or array.
-		if (this.totalSize) {
+		if (this.totalSize !== undefined) {
 			return this.totalSize;
 		}
 
@@ -222,9 +235,9 @@ export default class SizeAndPositionManager {
 	 * Determines a new offset that ensures a certain item is visible, given the alignment.
 	 *
 	 * @param {'auto' | 'start' | 'center' | 'end'} align Desired alignment within container
-	 * @param {number | undefined} containerSize Size (width or height) of the container viewport
-	 * @param {number | undefined} currentOffset
-	 * @param {number | undefined} targetIndex
+	 * @param {number} containerSize Size (width or height) of the container viewport
+	 * @param {number} currentOffset
+	 * @param {number} targetIndex
 	 * @return {number} Offset to use to ensure the specified item is visible
 	 */
 	getUpdatedOffsetForIndex(align, containerSize, currentOffset, targetIndex) {
@@ -261,12 +274,10 @@ export default class SizeAndPositionManager {
 	 * @param {number} containerSize
 	 * @param {number} offset
 	 * @param {number} overscanCount
-	 * @return {{start: number|undefined, end: number|undefined}}
+	 * @return {{start?: number, end?: number}}
 	 */
 	getVisibleRange(containerSize, offset, overscanCount) {
-		const totalSize = this.getTotalSize();
-
-		if (totalSize === 0) {
+		if (this.itemCount === 0 || (!this.justInTime && this.getTotalSize() === 0)) {
 			return {};
 		}
 
@@ -347,12 +358,9 @@ export default class SizeAndPositionManager {
 	 * @param {number} offset
 	 */
 	binarySearch(high, low, offset) {
-		let middle = 0;
-		let currentOffset = 0;
-
 		while (low <= high) {
-			middle = low + Math.floor((high - low) / 2);
-			currentOffset = this.getSizeAndPositionForIndex(middle).offset;
+			const middle = low + Math.floor((high - low) / 2);
+			const currentOffset = this.getSizeAndPositionForIndex(middle).offset;
 
 			if (currentOffset === offset) {
 				return middle;

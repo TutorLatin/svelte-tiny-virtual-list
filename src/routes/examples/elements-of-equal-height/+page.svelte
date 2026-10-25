@@ -1,5 +1,5 @@
 <script>
-	import VirtualList from '$lib/VirtualList.svelte';
+	import VirtualList from '#lib/VirtualList.svelte';
 
 	let itemSize = $state(50);
 </script>

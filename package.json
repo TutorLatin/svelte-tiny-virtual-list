@@ -24,7 +24,7 @@
 		"check:prettier": "prettier --check .",
 		"check:vitest": "vitest run",
 		"check:playwright": "playwright test",
-		"check:svelte": "svelte-kit sync && (svelte-check --tsconfig ./jsconfig.json || echo 'Fix svelte-check errors!')",
+		"check:svelte": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
 		"fix": "pnpm run fix:biome && pnpm run fix:eslint && pnpm run fix:prettier",
 		"fix:biome": "biome check --fix",
 		"fix:eslint": "eslint --fix .",
@@ -33,41 +33,42 @@
 		"fix-unsafe:biome": "biome check --fix --unsafe"
 	},
 	"engines": {
-		"node": ">=20.17.0"
+		"node": ">=22.22.1"
 	},
 	"packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184",
 	"peerDependencies": {
 		"svelte": "^5.0.0"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.15",
-		"@eslint/compat": "^2.1.0",
+		"@biomejs/biome": "^2.6.3",
+		"@eslint/compat": "^2.1.1",
 		"@eslint/js": "^10.0.1",
-		"@playwright/test": "^1.60.0",
-		"@sveltejs/adapter-static": "^3.0.10",
-		"@sveltejs/kit": "^2.61.1",
-		"@sveltejs/package": "^2.5.7",
-		"@sveltejs/vite-plugin-svelte": "^7.1.2",
-		"@vitest/browser": "^4.1.7",
-		"eslint": "^10.4.0",
+		"@playwright/test": "^1.64.1",
+		"@sveltejs/adapter-static": "^4.0.0",
+		"@sveltejs/kit": "^3.1.0",
+		"@sveltejs/package": "^3.0.1",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@types/node": "^24.0.0",
+		"@vitest/browser-playwright": "^5.0.5",
+		"eslint": "^10.13.0",
 		"eslint-config-prettier": "^10.1.8",
-		"eslint-plugin-svelte": "^3.17.1",
-		"globals": "^17.6.0",
-		"lint-staged": "^17.0.5",
-		"marked": "^18.0.4",
-		"marked-base-url": "^1.1.9",
+		"eslint-plugin-svelte": "^3.23.1",
+		"globals": "^17.13.0",
+		"lint-staged": "^17.6.0",
+		"marked": "^18.1.1",
+		"marked-base-url": "^1.1.10",
 		"marked-gfm-heading-id": "^4.1.4",
-		"playwright": "^1.53.0",
-		"prettier": "^3.8.3",
-		"prettier-plugin-svelte": "^4.0.1",
-		"publint": "^0.3.21",
-		"svelte": "^5.55.9",
-		"svelte-check": "^4.4.8",
-		"svelte-infinite-loading": "^1.4.0",
+		"playwright": "^1.64.1",
+		"prettier": "^3.9.10",
+		"prettier-plugin-svelte": "^4.1.1",
+		"publint": "^0.3.25",
+		"svelte": "^5.57.2",
+		"svelte-check": "^4.7.7",
+		"svelte-infinite-loading": "^2.0.0",
 		"typescript": "^6.0.3",
-		"vite": "^8.0.14",
-		"vitest": "^4.0.15",
-		"vitest-browser-svelte": "^2.1.1"
+		"vite": "^8.3.5",
+		"vitest": "^5.0.5",
+		"vitest-browser-svelte": "^3.1.0"
 	},
 	"files": [
 		"dist",
@@ -80,6 +81,10 @@
 	"type": "module",
 	"svelte": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"imports": {
+		"#lib": "./src/lib/index.js",
+		"#lib/*": "./src/lib/*"
+	},
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",

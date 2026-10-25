@@ -1,4 +1,4 @@
-import { DEFAULTS, SCROLL_CHANGE_REASON } from '$lib/constants.js';
+import { DEFAULTS, SCROLL_CHANGE_REASON } from '../constants.js';
 
 /** @typedef {typeof SCROLL_CHANGE_REASON[keyof typeof SCROLL_CHANGE_REASON]} ScrollChangeReason */
 

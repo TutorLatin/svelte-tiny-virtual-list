@@ -70,6 +70,124 @@ describe('SizeAndPositionManager', () => {
 		};
 	}
 
+	describe('updateConfig', () => {
+		it('keeps function sizing lazy across unchanged configuration updates', () => {
+			/** @type {number[]} */
+			const calls = [];
+			/** @param {number} index */
+			const itemSize = (index) => {
+				calls.push(index);
+				return 10;
+			};
+			const manager = new SizeAndPositionManager(itemSize, 100000, 10);
+
+			manager.updateConfig(itemSize, 100000, 10);
+			manager.updateConfig(itemSize, 100000, 10);
+			expect(calls).toEqual([]);
+			manager.getSizeAndPositionForIndex(2);
+			manager.updateConfig(itemSize, 100000, 10);
+			manager.getSizeAndPositionForIndex(2);
+			expect(calls).toEqual([0, 1, 2]);
+		});
+
+		it('preserves measured rows when appending items with the same sizing callback', () => {
+			/** @type {number[]} */
+			const calls = [];
+			/** @param {number} index */
+			const itemSize = (index) => {
+				calls.push(index);
+				return 10;
+			};
+			const manager = new SizeAndPositionManager(itemSize, 3, 10);
+			manager.getSizeAndPositionForIndex(2);
+			calls.splice(0);
+
+			manager.updateConfig(itemSize, 5, 10);
+			expect(manager.getTotalSize()).toBe(50);
+			expect(manager.getSizeAndPositionForIndex(2)).toEqual({ offset: 20, size: 10 });
+			expect(calls).toEqual([]);
+			expect(manager.getSizeAndPositionForIndex(4)).toEqual({ offset: 40, size: 10 });
+			expect(calls).toEqual([3, 4]);
+		});
+
+		it('discards cached measurements when the sizing callback changes', () => {
+			const manager = new SizeAndPositionManager(() => 10, 100, 10);
+			manager.getSizeAndPositionForIndex(5);
+
+			manager.updateConfig(() => 20, 100, 20);
+			expect(manager.getSizeAndPositionForIndex(5)).toEqual({ offset: 100, size: 20 });
+			expect(manager.getTotalSize()).toBe(2000);
+		});
+
+		it('keeps measured rows within bounds after shrinking the list', () => {
+			const itemSize = () => 10;
+			const manager = new SizeAndPositionManager(itemSize, 100, 10);
+			manager.getSizeAndPositionForIndex(99);
+
+			manager.updateConfig(itemSize, 5, 10);
+			expect(manager.getTotalSize()).toBe(50);
+			expect(manager.getVisibleRange(50, 0, 0)).toEqual({ start: 0, end: 4 });
+		});
+
+		it('remeasures removed rows if the same callback is later given more items', () => {
+			const sizes = [10, 20, 30];
+			/** @param {number} index */
+			const itemSize = (index) => sizes[index];
+			const manager = new SizeAndPositionManager(itemSize, 3, 10);
+			manager.getSizeAndPositionForIndex(2);
+
+			manager.updateConfig(itemSize, 1, 10);
+			sizes[1] = 40;
+			sizes[2] = 50;
+			manager.updateConfig(itemSize, 3, 10);
+
+			expect(manager.getSizeAndPositionForIndex(2)).toEqual({ offset: 50, size: 50 });
+			expect(manager.getTotalSize()).toBe(100);
+		});
+
+		it('returns an empty range when a measured list is cleared', () => {
+			const sizes = [10, 20, 30];
+			/** @param {number} index */
+			const itemSize = (index) => sizes[index];
+			const manager = new SizeAndPositionManager(itemSize, 3, 15);
+			manager.getSizeAndPositionForIndex(2);
+
+			manager.updateConfig(itemSize, 0, 15);
+			expect(manager.getTotalSize()).toBe(0);
+			expect(manager.getVisibleRange(50, 0, 0)).toEqual({});
+		});
+
+		it('updates estimates without discarding measured rows', () => {
+			let calls = 0;
+			const itemSize = () => {
+				calls++;
+				return 10;
+			};
+			const manager = new SizeAndPositionManager(itemSize, 100, 10);
+			manager.getSizeAndPositionForIndex(9);
+
+			manager.updateConfig(itemSize, 100, 20);
+			expect(manager.getTotalSize()).toBe(1900);
+			expect(manager.getSizeAndPositionForIndex(9)).toEqual({ offset: 90, size: 10 });
+			expect(calls).toBe(10);
+		});
+
+		it('rebuilds sizes when switching between numeric, function, and array sizing', () => {
+			const manager = new SizeAndPositionManager(10, 3, 10);
+			manager.updateConfig(() => 20, 3, 20);
+			expect(manager.getSizeAndPositionForIndex(2)).toEqual({ offset: 40, size: 20 });
+			expect(manager.getTotalSize()).toBe(60);
+
+			manager.updateConfig(5, 3, 10);
+			expect(manager.getSizeAndPositionForIndex(2)).toEqual({ offset: 10, size: 5 });
+			expect(manager.getTotalSize()).toBe(15);
+
+			manager.updateConfig([10, 20, 30], 3, 10);
+			expect(manager.getSizeAndPositionForIndex(2)).toEqual({ offset: 30, size: 30 });
+			expect(manager.getTotalSize()).toBe(60);
+		});
+	});
+
 	describe('findNearestItem', () => {
 		it('should error if given NaN', () => {
 			const { sizeAndPositionManager } = getItemSizeAndPositionManager();
@@ -225,6 +343,12 @@ describe('SizeAndPositionManager', () => {
 		it('should calculate total size by multiplying the itemCount with the itemSize', () => {
 			const { sizeAndPositionManager, totalSize } = getItemSizeAndPositionManagerNumber();
 			expect(sizeAndPositionManager.getTotalSize()).toEqual(totalSize);
+		});
+
+		it('preserves a computed zero size instead of using the estimate', () => {
+			const manager = new SizeAndPositionManager(0, 10, 15);
+			expect(manager.getTotalSize()).toBe(0);
+			expect(manager.getVisibleRange(50, 0, 0)).toEqual({});
 		});
 	});
 
@@ -394,6 +518,38 @@ describe('SizeAndPositionManager', () => {
 	});
 
 	describe('getVisibleRange', () => {
+		it('measures the initial viewport lazily when the callback estimate is zero', () => {
+			let calls = 0;
+			const manager = new SizeAndPositionManager(
+				() => {
+					calls++;
+					return 10;
+				},
+				100000,
+				0
+			);
+
+			expect(manager.getVisibleRange(50, 0, 0)).toEqual({ start: 0, end: 4 });
+			expect(calls).toBe(5);
+			expect(manager.getVisibleRange(50, 50, 0)).toEqual({ start: 5, end: 9 });
+			expect(calls).toBe(10);
+		});
+
+		it('does not call the sizing callback for an empty list with a zero estimate', () => {
+			let calls = 0;
+			const manager = new SizeAndPositionManager(
+				() => {
+					calls++;
+					return 10;
+				},
+				0,
+				0
+			);
+
+			expect(manager.getVisibleRange(50, 0, 0)).toEqual({});
+			expect(calls).toBe(0);
+		});
+
 		it('should not return any indices if :itemCount is 0', () => {
 			const { sizeAndPositionManager } = getItemSizeAndPositionManager(0);
 			const { start, end } = sizeAndPositionManager.getVisibleRange(50, 0, 0);
